@@ -1,60 +1,116 @@
--- Define o lado onde o scanner está conectado
-local lado = "top"
-local geo = peripheral.wrap(lado)
+-- Encontra os periféricos
+local geo = peripheral.wrap("top")
+local monitor = peripheral.find("monitor")
 
--- Limpa a tela
-term.clear()
-term.setCursorPos(1,1)
-
--- Verifica se existe algum bloco conectado no topo
+-- Checagens de erro no terminal do computador
 if not geo then
-    print("Erro: Nenhum periférico detectado no lado: " .. lado)
+    print("Erro: Geo Scanner nao encontrado no topo.")
     return
 end
 
--- Verifica se o bloco conectado realmente tem a função de escanear
-if not geo.scan then
-    local tipo_bloco = peripheral.getType(lado)
-    print("Erro: O bloco no topo foi reconhecido como '" .. tipo_bloco .. "'.")
-    print("Esse bloco não possui a função de escaneamento.")
+if not monitor then
+    print("Erro: Monitor nao encontrado. Conecte um Advanced Monitor.")
     return
 end
 
-print("Iniciando escaneamento de minérios...")
-print("-----------------------------------")
+-- ==========================================
+-- CONFIGURAÇÃO DO MONITOR (DECORAÇÃO)
+-- ==========================================
+monitor.setTextScale(1) -- Tamanho do texto (0.5 a 5). Mude se a tela for muito grande ou pequena.
 
--- Define o raio máximo de escaneamento (o padrão máximo geralmente é 8)
+-- Função para desenhar o cabeçalho bonitão
+local function desenharCabecalho()
+    monitor.setBackgroundColor(colors.blue)
+    monitor.setTextColor(colors.yellow)
+    monitor.clearLine()
+    monitor.setCursorPos(1, 1)
+    
+    -- Centraliza o texto (aproximadamente) dependendo do tamanho da tela
+    local largura, altura = monitor.getSize()
+    local titulo = " RADAR DE MINERIOS "
+    local espacos = math.floor((largura - string.len(titulo)) / 2)
+    
+    monitor.setCursorPos(espacos, 1)
+    monitor.write(titulo)
+    
+    -- Reseta as cores para o restante da tela
+    monitor.setBackgroundColor(colors.black)
+    monitor.setTextColor(colors.white)
+end
+
+-- Tela de carregamento
+monitor.setBackgroundColor(colors.black)
+monitor.clear()
+desenharCabecalho()
+monitor.setCursorPos(2, 3)
+monitor.setTextColor(colors.lightGray)
+monitor.write("Escaneando terreno...")
+
+-- ==========================================
+-- LÓGICA DO ESCANEAMENTO
+-- ==========================================
 local raio = 8 
 local blocos = geo.scan(raio)
 
--- O scanner tem um tempo de recarga (cooldown). Se falhar, avisa o jogador.
 if not blocos then
-    print("Erro: O escaneamento falhou.")
-    print("Aguarde alguns segundos. O scanner está em tempo de recarga (cooldown).")
+    monitor.setCursorPos(2, 4)
+    monitor.setTextColor(colors.red)
+    monitor.write("Erro: Scanner em tempo de recarga (Cooldown).")
+    print("O scanner falhou. Tente novamente em alguns segundos.")
     return
 end
 
-local minerios_encontrados = 0
+-- Tabela para agrupar as quantidades de cada minério
+local contagem_minerios = {}
+local encontrou_algo = false
 
--- Vasculha a lista de todos os blocos encontrados
 for i, bloco in ipairs(blocos) do
-    -- Procura pela palavra "ore" no nome do bloco
     if string.find(bloco.name, "ore") then
-        minerios_encontrados = minerios_encontrados + 1
+        encontrou_algo = true
         
-        -- Formata o nome para ficar limpo na tela
+        -- Limpa o nome para ficar bonito na tela
         local nome_limpo = string.gsub(bloco.name, "minecraft:", "")
         nome_limpo = string.gsub(nome_limpo, "forge:", "")
         nome_limpo = string.gsub(nome_limpo, "_ore", "")
+        nome_limpo = string.upper(nome_limpo)
         
-        print(minerios_encontrados .. ". " .. string.upper(nome_limpo))
-        print("   X: " .. bloco.x .. " | Y: " .. bloco.y .. " | Z: " .. bloco.z)
-        print("-----------------------------------")
+        -- Soma +1 na contagem desse minério específico
+        if contagem_minerios[nome_limpo] then
+            contagem_minerios[nome_limpo] = contagem_minerios[nome_limpo] + 1
+        else
+            contagem_minerios[nome_limpo] = 1
+        end
     end
 end
 
-if minerios_encontrados == 0 then
-    print("Nenhum minério encontrado num raio de " .. raio .. " blocos.")
+-- ==========================================
+-- EXIBINDO OS RESULTADOS NO MONITOR
+-- ==========================================
+monitor.clear()
+desenharCabecalho()
+
+local linha_atual = 3
+
+if not encontrou_algo then
+    monitor.setCursorPos(2, linha_atual)
+    monitor.setTextColor(colors.red)
+    monitor.write("Nenhum minerio encontrado na regiao.")
 else
-    print("Busca concluída! Total: " .. minerios_encontrados .. " minérios.")
+    -- Lista cada minério encontrado com cores
+    for nome, quantidade in pairs(contagem_minerios) do
+        monitor.setCursorPos(2, linha_atual)
+        
+        -- Pinta o nome do minério de verde claro
+        monitor.setTextColor(colors.lime)
+        monitor.write("- " .. nome .. ": ")
+        
+        -- Pinta a quantidade de branco
+        monitor.setTextColor(colors.white)
+        monitor.write(tostring(quantidade) .. " blocos")
+        
+        linha_atual = linha_atual + 2 -- Pula uma linha para não ficar espremido
+    end
 end
+
+-- Avisa no computador que deu tudo certo
+print("Escaneamento concluido! Verifique o monitor.")
