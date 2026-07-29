@@ -1,6 +1,6 @@
 -- Encontra os periféricos
 local geo = peripheral.wrap("top")
-local monitor = peripheral.find("monitor")
+local monitor = peripheral.wrap("right")
 
 -- Checagens de erro no terminal do computador
 if not geo then
