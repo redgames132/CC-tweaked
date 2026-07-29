@@ -11,8 +11,8 @@ if not geo then print("❌ Erro: Geo Scanner não encontrado!") return end
 -- 📊 ESTADO DO SISTEMA
 -- =======================================================
 local cfg = {
-    raio = 16,        -- Raio inicial
-    maxRaio = 32,     -- 🚀 LIMITE MÁXIMO DO RAIO (Pode mudar para 64)
+    raio = 8,        -- Raio inicial
+    maxRaio = 16,     -- 🚀 LIMITE MÁXIMO DO RAIO (Pode mudar para 64)
     escala = 0.5,
     pagina = 1,
     autoRefresh = false
