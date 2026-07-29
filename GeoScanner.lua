@@ -11,7 +11,8 @@ if not geo then print("❌ Erro: Geo Scanner não encontrado!") return end
 -- 📊 ESTADO DO SISTEMA
 -- =======================================================
 local cfg = {
-    raio = 16,
+    raio = 16,        -- Raio inicial
+    maxRaio = 32,     -- 🚀 LIMITE MÁXIMO DO RAIO (Pode mudar para 64)
     escala = 0.5,
     pagina = 1,
     autoRefresh = false
@@ -59,7 +60,6 @@ local function obterCor(nome)
     return colors.lightBlue
 end
 
--- Desenha um texto centralizado
 local function centralizar(y, texto, corTexto, corFundo)
     local larg, _ = mon.getSize()
     local x = math.floor((larg - #texto) / 2) + 1
@@ -70,13 +70,12 @@ local function centralizar(y, texto, corTexto, corFundo)
     mon.write(texto)
 end
 
--- Função para desenhar botões bonitos
 local function desenharBotao(x, y, texto, corFundo, corTexto)
     mon.setCursorPos(x, y)
     mon.setBackgroundColor(corFundo)
     mon.setTextColor(corTexto)
     mon.write(" " .. texto .. " ")
-    mon.setBackgroundColor(colors.black) -- reseta o fundo
+    mon.setBackgroundColor(colors.black)
 end
 
 -- =======================================================
@@ -117,13 +116,11 @@ local function desenharUI()
     mon.setCursorPos(1, 1)
     mon.setBackgroundColor(colors.gray)
     mon.write(string.rep(" ", larg))
-    centralizar(1, " ORE RADAR DASHBOARD v3.0 ", colors.cyan, colors.gray)
+    centralizar(1, " ORE RADAR DASHBOARD v3.1 ", colors.cyan, colors.gray)
 
     -- 2. BARRA DE CONTROLES (Linha 3)
-    -- Botão SCAN
     desenharBotao(2, 3, "SCAN", colors.lime, colors.black)
     
-    -- Botão AUTO
     if cfg.autoRefresh then
         desenharBotao(10, 3, "AUTO: ON", colors.lightBlue, colors.black)
     else
@@ -166,13 +163,13 @@ local function desenharUI()
     end
     
     -- 4. DADOS DOS MINÉRIOS
-    local maxLinhasPorColuna = alt - 7 -- Ajustado para caber o novo cabeçalho
+    local maxLinhasPorColuna = alt - 7
     local itensPorPagina = usarDuasColunas and (maxLinhasPorColuna * 2) or maxLinhasPorColuna
     local maxPaginas = math.ceil(#minerios / itensPorPagina)
     if maxPaginas == 0 then maxPaginas = 1 end
     
     if #minerios == 0 then
-        centralizar(linhaTabela + 2, "NENHUM MINERIO ENCONTRADO", colors.red, colors.black)
+        centralizar(linhaTabela + 2, "NENHUM MINERIO ENCONTRADO NO RAIO " .. cfg.raio, colors.red, colors.black)
     else
         local inicio = (cfg.pagina - 1) * itensPorPagina + 1
         local fim = math.min(inicio + itensPorPagina - 1, #minerios)
@@ -190,13 +187,11 @@ local function desenharUI()
             
             local posX = (col == 1) and 2 or (larguraColuna + 3)
             
-            -- Fundo listrado (Zebra) suave
             local corFundo = (linhaAtual % 2 == 0) and colors.black or colors.gray
             mon.setCursorPos(posX, linhaAtual)
             mon.setBackgroundColor(corFundo == colors.gray and colors.black or colors.gray)
             mon.write(string.rep(" ", larguraColuna))
             
-            -- Ícone e Nome
             mon.setCursorPos(posX, linhaAtual)
             mon.setTextColor(m.dist <= 4 and colors.yellow or colors.white)
             mon.write((m.dist <= 4 and "!" or ".") .. " ")
@@ -204,7 +199,6 @@ local function desenharUI()
             mon.setTextColor(m.cor)
             mon.write(string.format("%-7s ", m.nome))
             
-            -- Restante dos Dados
             mon.setTextColor(colors.lightGray)
             mon.write(string.format("%-4s ", string.sub(m.mod, 1, 4)))
             mon.setTextColor(colors.white)
@@ -217,7 +211,7 @@ local function desenharUI()
     mon.setCursorPos(1, alt)
     mon.write(string.rep(" ", larg))
     
-    local txtPag = string.format(" <<   PAGINA %d / %d   >> ", cfg.pagina, maxPaginas)
+    local txtPag = string.format(" <<   PAGINA %d / %d (%d MINERIOS)   >> ", cfg.pagina, maxPaginas, #minerios)
     centralizar(alt, txtPag, colors.white, colors.gray)
 end
 
@@ -240,18 +234,16 @@ local function loopEventos()
         if maxPaginas == 0 then maxPaginas = 1 end
         
         if event == "monitor_touch" then
-            -- Cliques na linha de controles (Linha 3)
             if y == 3 then
-                if x >= 2 and x <= 7 then escanear() -- SCAN
-                elseif x >= 10 and x <= 20 then cfg.autoRefresh = not cfg.autoRefresh -- AUTO
-                elseif x >= 30 and x <= 32 then if cfg.raio > 1 then cfg.raio = cfg.raio - 1 end -- Raio <
-                elseif x >= 36 and x <= 38 then if cfg.raio < 16 then cfg.raio = cfg.raio + 1 end -- Raio >
-                elseif x >= 48 and x <= 50 then if cfg.escala > 0.5 then cfg.escala = cfg.escala - 0.5 end -- Zoom <
-                elseif x >= 55 and x <= 57 then if cfg.escala < 3.0 then cfg.escala = cfg.escala + 0.5 end -- Zoom >
+                if x >= 2 and x <= 7 then escanear()
+                elseif x >= 10 and x <= 20 then cfg.autoRefresh = not cfg.autoRefresh
+                elseif x >= 30 and x <= 32 then if cfg.raio > 1 then cfg.raio = cfg.raio - 1 end
+                elseif x >= 36 and x <= 38 then if cfg.raio < cfg.maxRaio then cfg.raio = cfg.raio + 1 end -- 🚀 Usa maxRaio
+                elseif x >= 48 and x <= 50 then if cfg.escala > 0.5 then cfg.escala = cfg.escala - 0.5 end
+                elseif x >= 55 and x <= 57 then if cfg.escala < 3.0 then cfg.escala = cfg.escala + 0.5 end
                 end
                 desenharUI()
                 
-            -- Cliques na Paginação (Última Linha)
             elseif y == alt then
                 if x < (larg / 2) then
                     if cfg.pagina > 1 then cfg.pagina = cfg.pagina - 1 end
@@ -286,6 +278,6 @@ local function loopSaida()
     end
 end
 
-print("🚀 Dashboard Widescreen Iniciado!")
+print("🚀 Dashboard Inicializado (Max Raio: " .. cfg.maxRaio .. ")")
 print("Pressione 'Q' no terminal para desligar.")
 parallel.waitForAny(loopSaida, loopEventos)
