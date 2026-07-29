@@ -1,5 +1,5 @@
 -- Tenta encontrar o Geo Scanner conectado ao computador
-local geo = peripheral.find("geoScanner")
+local geo = peripheral.wrap("top")
 
 if not geo then
     print("Erro: Geo Scanner não encontrado!")
