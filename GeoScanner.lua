@@ -1,39 +1,26 @@
 -- =======================================================
--- BUSCA DE PERIFÉRICOS
+-- ⚙️ SETUP E PERIFÉRICOS
 -- =======================================================
 local mon = peripheral.find("monitor")
 local geo = peripheral.find("geoScanner") or peripheral.wrap("top")
 
-if not mon then
-    print("Erro: Monitor não encontrado!")
-    return
-end
-if not geo then
-    print("Erro: Geo Scanner não encontrado! Coloque-o no topo ou ao lado.")
-    return
-end
+if not mon then print("❌ Erro: Monitor não encontrado!") return end
+if not geo then print("❌ Erro: Geo Scanner não encontrado!") return end
 
 -- =======================================================
--- VARIÁVEIS DE ESTADO (CONFIGURAÇÕES DO JOGO)
+-- 📊 ESTADO DO SISTEMA
 -- =======================================================
-local cfg = {
-    raio = 8,
-    escala = 1.0,
-    pagina = 1
-}
-
+local cfg = { raio = 8, escala = 1.0, pagina = 1 }
 local minerios = {}
 local rodando = true
 
 -- =======================================================
--- FUNÇÕES AUXILIARES
+-- 🎨 UTILITÁRIOS DE TELA E DADOS
 -- =======================================================
--- Calcula a distância para ordenar do mais perto ao mais longe
 local function calcularDistancia(x, y, z)
-    return math.sqrt(x^2 + y^2 + z^2)
+    return math.floor(math.sqrt(x^2 + y^2 + z^2))
 end
 
--- Associa cores aos minérios
 local function obterCor(nome)
     if string.find(nome, "DIAMOND") then return colors.cyan end
     if string.find(nome, "GOLD") then return colors.yellow end
@@ -46,8 +33,36 @@ local function obterCor(nome)
     return colors.white
 end
 
--- Realiza o escaneamento
+local function centralizar(y, texto, corTexto, corFundo)
+    local larg, _ = mon.getSize()
+    local x = math.floor((larg - #texto) / 2) + 1
+    if x < 1 then x = 1 end
+    mon.setCursorPos(x, y)
+    mon.setTextColor(corTexto or colors.white)
+    if corFundo then mon.setBackgroundColor(corFundo) end
+    mon.write(texto)
+end
+
+-- =======================================================
+-- 📡 LÓGICA DO SCANNER
+-- =======================================================
+local function telaCarregamento()
+    local larg, alt = mon.getSize()
+    mon.setBackgroundColor(colors.black)
+    mon.clear()
+    
+    -- Borda decorativa
+    mon.setCursorPos(1,1)
+    mon.setBackgroundColor(colors.blue)
+    mon.write(string.rep(" ", larg))
+    mon.setCursorPos(1, alt)
+    mon.write(string.rep(" ", larg))
+    
+    centralizar(math.floor(alt/2), " ⏳ ESCANEANDO TERRENO... ", colors.yellow, colors.gray)
+end
+
 local function escanear()
+    telaCarregamento()
     minerios = {}
     local blocos = geo.scan(cfg.raio)
     
@@ -58,150 +73,138 @@ local function escanear()
                 nome = string.gsub(nome, "forge:", "")
                 nome = string.gsub(nome, "_ore", "")
                 nome = string.upper(nome)
+                -- Corta o nome para caber na tabela perfeitamente (max 9 letras)
+                nome = string.sub(nome, 1, 9) 
                 
                 local dist = calcularDistancia(b.x, b.y, b.z)
                 table.insert(minerios, {nome=nome, x=b.x, y=b.y, z=b.z, dist=dist, cor=obterCor(nome)})
             end
         end
-        -- Ordena a tabela pela distância (mais próximos primeiro)
         table.sort(minerios, function(a, b) return a.dist < b.dist end)
     end
-    cfg.pagina = 1 -- Reseta para a primeira página após escanear
+    cfg.pagina = 1
 end
 
 -- =======================================================
--- RENDERIZAÇÃO DA UI (INTERFACE GRÁFICA)
+-- 🖥️ RENDERIZAÇÃO DA UI PRINCIPAL
 -- =======================================================
-local function desenharTela()
+local function desenharUI()
     mon.setTextScale(cfg.escala)
     local larg, alt = mon.getSize()
-    
     mon.setBackgroundColor(colors.black)
     mon.clear()
     
-    -- 1. BARRA SUPERIOR (BOTÕES DE CONFIGURAÇÃO)
+    -- 1. BARRA SUPERIOR (PAINEL DE CONTROLE)
     mon.setCursorPos(1, 1)
     mon.setBackgroundColor(colors.blue)
+    mon.write(string.rep(" ", larg))
+    mon.setCursorPos(2, 1)
     mon.setTextColor(colors.white)
-    mon.write(string.rep(" ", larg)) -- Preenche o fundo
     
-    mon.setCursorPos(1, 1)
-    -- Os botões estão em posições fixas para podermos clicar neles depois
-    local texto_raio = string.format("%02d", cfg.raio)
-    local texto_zoom = string.format("%.1f", cfg.escala)
-    mon.write("[SCAN]  Raio:[-] " .. texto_raio .. " [+]  Zoom:[-] " .. texto_zoom .. " [+]")
+    -- Botões de atalho da barra superior
+    mon.write("[SCAN]")
+    local str_raio = string.format("R:%02d", cfg.raio)
+    local str_zoom = string.format("Z:%.1f", cfg.escala)
     
-    -- 2. LISTA DE MINÉRIOS (PÁGINAS)
-    local max_linhas = alt - 3 -- Espaço tirando cabeçalho e rodapé
+    mon.setCursorPos(larg - 24, 1)
+    mon.write("[-] " .. str_raio .. " [+]   [-] " .. str_zoom .. " [+]")
+
+    -- 2. CABEÇALHO DA TABELA
+    mon.setCursorPos(1, 2)
+    mon.setBackgroundColor(colors.gray)
+    mon.write(string.rep(" ", larg))
+    mon.setCursorPos(2, 2)
+    mon.setTextColor(colors.cyan)
+    -- Layout da Tabela: NOME (10), DIST (4), X (4), Y (4), Z (4)
+    mon.write(string.format("%-10s %-4s %-4s %-4s %-4s", "MINERIO", "DIST", "X", "Y", "Z"))
+    
+    -- 3. LINHAS DE DADOS
+    local max_linhas = alt - 3
     local max_paginas = math.ceil(#minerios / max_linhas)
     if max_paginas == 0 then max_paginas = 1 end
     
     if #minerios == 0 then
-        mon.setBackgroundColor(colors.black)
-        mon.setTextColor(colors.red)
-        mon.setCursorPos(2, 3)
-        mon.write("Nenhum minério encontrado ou scanner em recarga.")
+        centralizar(4, "Nenhum minério no raio atual", colors.red, colors.black)
     else
         local inicio = (cfg.pagina - 1) * max_linhas + 1
         local fim = math.min(inicio + max_linhas - 1, #minerios)
-        
         local linha_atual = 3
+        
         for i = inicio, fim do
             local m = minerios[i]
             mon.setBackgroundColor(colors.black)
+            mon.setCursorPos(2, linha_atual)
             
-            -- Pinta o nome do minério
-            mon.setCursorPos(1, linha_atual)
+            -- Pinta só o nome da cor do minério
             mon.setTextColor(m.cor)
-            mon.write("• " .. m.nome)
+            mon.write(string.format("%-10s", m.nome))
             
-            -- Pinta as coordenadas
-            mon.setTextColor(colors.lightGray)
-            mon.write(string.format(" (X:%d Y:%d Z:%d)", m.x, m.y, m.z))
+            -- O resto dos dados em branco para ficar limpo
+            mon.setTextColor(colors.white)
+            mon.write(string.format(" %-4d %-4d %-4d %-4d", m.dist, m.x, m.y, m.z))
             
             linha_atual = linha_atual + 1
         end
     end
     
-    -- 3. BARRA INFERIOR (PAGINAÇÃO)
+    -- 4. BARRA INFERIOR (PAGINAÇÃO)
     mon.setBackgroundColor(colors.gray)
-    mon.setTextColor(colors.white)
+    mon.setTextColor(colors.yellow)
     mon.setCursorPos(1, alt)
     mon.write(string.rep(" ", larg))
-    
-    local txt_pag = "[<] PÁGINA " .. cfg.pagina .. " DE " .. max_paginas .. " [>]"
-    local meio = math.floor((larg - string.len(txt_pag)) / 2)
-    if meio < 1 then meio = 1 end
-    mon.setCursorPos(meio, alt)
-    mon.write(txt_pag)
+    centralizar(alt, "[<] PÁGINA " .. cfg.pagina .. " / " .. max_paginas .. " [>]", colors.white, colors.gray)
 end
 
 -- =======================================================
--- GERENCIADOR DE CLIQUES (TOUCH)
+-- 🖱️ SISTEMA DE TOQUE (HITBOXES)
 -- =======================================================
-local function loopInterface()
+local function loopToque()
     escanear()
-    desenharTela()
+    desenharUI()
     
     while rodando do
-        -- Espera alguém clicar no monitor
-        local evento, lado, x, y = os.pullEvent("monitor_touch")
+        local _, _, x, y = os.pullEvent("monitor_touch")
         local larg, alt = mon.getSize()
         local max_linhas = alt - 3
         local max_paginas = math.ceil(#minerios / max_linhas)
         if max_paginas == 0 then max_paginas = 1 end
         
-        -- Clicou na Barra Superior (Linha 1)
+        -- Hitboxes da Linha 1 (Controles)
         if y == 1 then
-            if x >= 1 and x <= 6 then
-                -- Clicou em [SCAN]
-                escanear()
-            elseif x >= 15 and x <= 17 then
-                -- Clicou em Raio [-]
-                if cfg.raio > 1 then cfg.raio = cfg.raio - 1 end
-            elseif x >= 22 and x <= 24 then
-                -- Clicou em Raio [+]
-                if cfg.raio < 16 then cfg.raio = cfg.raio + 1 end
-            elseif x >= 33 and x <= 35 then
-                -- Clicou em Zoom [-]
-                if cfg.escala > 0.5 then cfg.escala = cfg.escala - 0.5 end
-            elseif x >= 40 and x <= 42 then
-                -- Clicou em Zoom [+]
-                if cfg.escala < 3.0 then cfg.escala = cfg.escala + 0.5 end
+            if x >= 2 and x <= 7 then escanear() -- [SCAN]
+            elseif x >= (larg - 24) and x <= (larg - 21) then if cfg.raio > 1 then cfg.raio = cfg.raio - 1 end -- Raio [-]
+            elseif x >= (larg - 14) and x <= (larg - 11) then if cfg.raio < 16 then cfg.raio = cfg.raio + 1 end -- Raio [+]
+            elseif x >= (larg - 9) and x <= (larg - 6) then if cfg.escala > 0.5 then cfg.escala = cfg.escala - 0.5 end -- Zoom [-]
+            elseif x >= (larg - 0) or x >= (larg - 3) then if cfg.escala < 3.0 then cfg.escala = cfg.escala + 0.5 end -- Zoom [+]
             end
         end
         
-        -- Clicou na Barra Inferior (Última Linha)
+        -- Hitboxes da Última Linha (Paginação)
         if y == alt then
-            if x < (larg / 2) then
-                -- Metade esquerda (Página Anterior)
-                if cfg.pagina > 1 then cfg.pagina = cfg.pagina - 1 end
-            else
-                -- Metade direita (Próxima Página)
-                if cfg.pagina < max_paginas then cfg.pagina = cfg.pagina + 1 end
+            if x < (larg / 2) then if cfg.pagina > 1 then cfg.pagina = cfg.pagina - 1 end
+            else if cfg.pagina < max_paginas then cfg.pagina = cfg.pagina + 1 end
             end
         end
-        
-        desenharTela()
+        desenharUI()
     end
 end
 
 -- =======================================================
--- FINALIZAÇÃO SEGURA
+-- 🚀 INICIALIZAÇÃO SEGURA
 -- =======================================================
--- Permite fechar o programa apertando Q no computador (para não travar)
 local function loopSaida()
     while rodando do
-        local evento, tecla = os.pullEvent("key")
+        local _, tecla = os.pullEvent("key")
         if tecla == keys.q then
             rodando = false
-            print("Radar desligado com sucesso.")
+            mon.setBackgroundColor(colors.black)
             mon.clear()
+            print("Radar desligado com sucesso.")
         end
     end
 end
 
-print("📡 Radar Iniciado no Monitor!")
-print("Pressione 'Q' neste terminal para desligar.")
--- Roda a interface e o botão de saída ao mesmo tempo
-parallel.waitForAny(loopSaida, loopInterface)
+print("🚀 Sistema Inicializado!")
+print("Painel sendo exibido no monitor.")
+print("Pressione 'Q' neste terminal para sair.")
+parallel.waitForAny(loopSaida, loopToque)
