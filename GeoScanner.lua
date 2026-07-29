@@ -12,7 +12,7 @@ if not geo then print("❌ Erro: Geo Scanner não encontrado!") return end
 -- =======================================================
 local cfg = {
     raio = 16,
-    escala = 0.5, -- Escala atual da sua foto
+    escala = 0.5,
     pagina = 1,
     autoRefresh = false
 }
@@ -21,34 +21,26 @@ local minerios = {}
 local rodando = true
 
 -- =======================================================
--- 🎨 UTILITÁRIOS DE CORES E TRATAMENTO DE TEXTO
+-- 🎨 UTILITÁRIOS DE TELA E CORES
 -- =======================================================
 local function calcularDistancia(x, y, z)
     return math.floor(math.sqrt(x^2 + y^2 + z^2))
 end
 
--- Limpa e formatada nomes do Minecraft e de Mods (ex: Create, Tech mods)
 local function formatarNomeMinerio(fullName)
     local mod = "MC"
     local nome = fullName
     
     if string.find(fullName, ":") then
         local partes = {}
-        for part in string.gmatch(fullName, "[^:]+") do
-            table.insert(partes, part)
-        end
-        if #partes >= 2 then
-            mod = string.upper(partes[1])
-            nome = partes[2]
-        end
+        for part in string.gmatch(fullName, "[^:]+") do table.insert(partes, part) end
+        if #partes >= 2 then mod = string.upper(partes[1]); nome = partes[2] end
     end
     
     nome = string.gsub(nome, "_ore", "")
     nome = string.gsub(nome, "ore_", "")
     nome = string.gsub(nome, "deepslate_", "")
     nome = string.upper(nome)
-    
-    -- Corta nomes gigantes para caber na tabela
     if #nome > 8 then nome = string.sub(nome, 1, 8) end
     
     return nome, mod
@@ -67,6 +59,7 @@ local function obterCor(nome)
     return colors.lightBlue
 end
 
+-- Desenha um texto centralizado
 local function centralizar(y, texto, corTexto, corFundo)
     local larg, _ = mon.getSize()
     local x = math.floor((larg - #texto) / 2) + 1
@@ -75,6 +68,15 @@ local function centralizar(y, texto, corTexto, corFundo)
     mon.setTextColor(corTexto or colors.white)
     if corFundo then mon.setBackgroundColor(corFundo) end
     mon.write(texto)
+end
+
+-- Função para desenhar botões bonitos
+local function desenharBotao(x, y, texto, corFundo, corTexto)
+    mon.setCursorPos(x, y)
+    mon.setBackgroundColor(corFundo)
+    mon.setTextColor(corTexto)
+    mon.write(" " .. texto .. " ")
+    mon.setBackgroundColor(colors.black) -- reseta o fundo
 end
 
 -- =======================================================
@@ -90,11 +92,7 @@ local function escanear()
                 local nome, mod = formatarNomeMinerio(b.name)
                 local dist = calcularDistancia(b.x, b.y, b.z)
                 table.insert(minerios, {
-                    nome = nome,
-                    mod = mod,
-                    x = b.x, y = b.y, z = b.z,
-                    dist = dist,
-                    cor = obterCor(nome)
+                    nome=nome, mod=mod, x=b.x, y=b.y, z=b.z, dist=dist, cor=obterCor(nome)
                 })
             end
         end
@@ -104,58 +102,77 @@ local function escanear()
 end
 
 -- =======================================================
--- 🖥️ RENDERIZAÇÃO DA UI DUAL-COLUMN (WIDESCREEN)
+-- 🖥️ RENDERIZAÇÃO DA UI DASHBOARD
 -- =======================================================
 local function desenharUI()
     mon.setTextScale(cfg.escala)
     local larg, alt = mon.getSize()
-    mon.setBackgroundColor(colors.black)
-    mon.clear()
-    
-    -- Detecta se a tela é larga o suficiente para 2 Colunas
     local usarDuasColunas = larg >= 60
     local larguraColuna = usarDuasColunas and math.floor((larg - 3) / 2) or (larg - 2)
     
-    -- 1. BARRA SUPERIOR (CONTROLES)
+    mon.setBackgroundColor(colors.black)
+    mon.clear()
+    
+    -- 1. CABEÇALHO PRINCIPAL
     mon.setCursorPos(1, 1)
-    mon.setBackgroundColor(colors.blue)
+    mon.setBackgroundColor(colors.gray)
     mon.write(string.rep(" ", larg))
-    mon.setCursorPos(2, 1)
-    mon.setTextColor(colors.white)
-    
-    local txtAuto = cfg.autoRefresh and "[AUTO:ON]" or "[AUTO:OFF]"
-    mon.write("[SCAN] " .. txtAuto)
-    
-    local str_raio = string.format("R:%02d", cfg.raio)
-    local str_zoom = string.format("Z:%.1f", cfg.escala)
-    mon.setCursorPos(math.max(20, larg - 28), 1)
-    mon.write("[-] " .. str_raio .. " [+]   [-] " .. str_zoom .. " [+]")
+    centralizar(1, " ORE RADAR DASHBOARD v3.0 ", colors.cyan, colors.gray)
 
-    -- 2. CABEÇALHO DA TABELA
-    mon.setCursorPos(1, 2)
+    -- 2. BARRA DE CONTROLES (Linha 3)
+    -- Botão SCAN
+    desenharBotao(2, 3, "SCAN", colors.lime, colors.black)
+    
+    -- Botão AUTO
+    if cfg.autoRefresh then
+        desenharBotao(10, 3, "AUTO: ON", colors.lightBlue, colors.black)
+    else
+        desenharBotao(10, 3, "AUTO: OFF", colors.red, colors.white)
+    end
+
+    -- Controles de Raio
+    mon.setCursorPos(24, 3)
+    mon.setTextColor(colors.lightGray)
+    mon.write("RAIO:")
+    desenharBotao(30, 3, "<", colors.gray, colors.white)
+    mon.setTextColor(colors.yellow)
+    mon.write(string.format(" %02d ", cfg.raio))
+    desenharBotao(36, 3, ">", colors.gray, colors.white)
+
+    -- Controles de Zoom
+    mon.setCursorPos(42, 3)
+    mon.setTextColor(colors.lightGray)
+    mon.write("ZOOM:")
+    desenharBotao(48, 3, "<", colors.gray, colors.white)
+    mon.setTextColor(colors.yellow)
+    mon.write(string.format(" %.1f ", cfg.escala))
+    desenharBotao(55, 3, ">", colors.gray, colors.white)
+
+    -- 3. CABEÇALHO DA TABELA (Linha 5)
+    local linhaTabela = 5
+    mon.setCursorPos(1, linhaTabela)
     mon.setBackgroundColor(colors.gray)
     mon.write(string.rep(" ", larg))
     
-    local cabecalho = string.format("%-8s %-4s %-4s %-3s %-3s %-3s", "MINERIO", "MOD", "DIST", "X", "Y", "Z")
+    local txtCabecalho = string.format("%-8s %-4s %-4s %-3s %-3s %-3s", "MINERIO", "MOD", "DIST", "X", "Y", "Z")
     
-    mon.setCursorPos(2, 2)
-    mon.setTextColor(colors.yellow)
-    mon.write(cabecalho)
+    mon.setCursorPos(2, linhaTabela)
+    mon.setTextColor(colors.white)
+    mon.write(txtCabecalho)
     
     if usarDuasColunas then
-        mon.setCursorPos(larguraColuna + 3, 2)
-        mon.setTextColor(colors.yellow)
-        mon.write(cabecalho)
+        mon.setCursorPos(larguraColuna + 3, linhaTabela)
+        mon.write(txtCabecalho)
     end
     
-    -- 3. LINHAS DE DADOS
-    local maxLinhasPorColuna = alt - 3
+    -- 4. DADOS DOS MINÉRIOS
+    local maxLinhasPorColuna = alt - 7 -- Ajustado para caber o novo cabeçalho
     local itensPorPagina = usarDuasColunas and (maxLinhasPorColuna * 2) or maxLinhasPorColuna
     local maxPaginas = math.ceil(#minerios / itensPorPagina)
     if maxPaginas == 0 then maxPaginas = 1 end
     
     if #minerios == 0 then
-        centralizar(4, "Nenhum minério encontrado no raio " .. cfg.raio, colors.red, colors.black)
+        centralizar(linhaTabela + 2, "NENHUM MINERIO ENCONTRADO", colors.red, colors.black)
     else
         local inicio = (cfg.pagina - 1) * itensPorPagina + 1
         local fim = math.min(inicio + itensPorPagina - 1, #minerios)
@@ -163,64 +180,53 @@ local function desenharUI()
         for i = inicio, fim do
             local m = minerios[i]
             local idxRelativo = i - inicio
-            
             local col = 1
-            local linha = idxRelativo + 3
+            local linhaAtual = idxRelativo + (linhaTabela + 1)
             
             if usarDuasColunas and idxRelativo >= maxLinhasPorColuna then
                 col = 2
-                linha = (idxRelativo - maxLinhasPorColuna) + 3
+                linhaAtual = (idxRelativo - maxLinhasPorColuna) + (linhaTabela + 1)
             end
             
             local posX = (col == 1) and 2 or (larguraColuna + 3)
             
-            -- Efeito Zebra (fundo cinza escuro sutil em linhas pares)
-            local corFundo = (linha % 2 == 0) and colors.black or colors.gray
-            local bgEfetivo = (corFundo == colors.gray) and colors.black or colors.gray
-            
-            -- Preenche o fundo da célula
-            mon.setCursorPos(posX, linha)
-            mon.setBackgroundColor(bgEfetivo)
+            -- Fundo listrado (Zebra) suave
+            local corFundo = (linhaAtual % 2 == 0) and colors.black or colors.gray
+            mon.setCursorPos(posX, linhaAtual)
+            mon.setBackgroundColor(corFundo == colors.gray and colors.black or colors.gray)
             mon.write(string.rep(" ", larguraColuna))
             
-            -- Escreve os dados
-            mon.setCursorPos(posX, linha)
-            
-            -- Ícone de proximidade
-            local ico = m.dist <= 4 and "⚡" or "•"
+            -- Ícone e Nome
+            mon.setCursorPos(posX, linhaAtual)
             mon.setTextColor(m.dist <= 4 and colors.yellow or colors.white)
-            mon.write(ico)
+            mon.write((m.dist <= 4 and "!" or ".") .. " ")
             
-            -- Nome e detalhes
             mon.setTextColor(m.cor)
             mon.write(string.format("%-7s ", m.nome))
             
+            -- Restante dos Dados
             mon.setTextColor(colors.lightGray)
             mon.write(string.format("%-4s ", string.sub(m.mod, 1, 4)))
-            
             mon.setTextColor(colors.white)
             mon.write(string.format("%-4d %-3d %-3d %-3d", m.dist, m.x, m.y, m.z))
         end
     end
     
-    -- 4. BARRA INFERIOR (PAGINAÇÃO)
+    -- 5. RODAPÉ DE PAGINAÇÃO
     mon.setBackgroundColor(colors.gray)
-    mon.setTextColor(colors.yellow)
     mon.setCursorPos(1, alt)
     mon.write(string.rep(" ", larg))
     
-    local txtPag = string.format("[<] PÁGINA %d DE %d (TOTAL: %d) [>]", cfg.pagina, maxPaginas, #minerios)
+    local txtPag = string.format(" <<   PAGINA %d / %d   >> ", cfg.pagina, maxPaginas)
     centralizar(alt, txtPag, colors.white, colors.gray)
 end
 
 -- =======================================================
--- 🖱️ GERENCIADOR DE EVENTOS (TOQUE + REFRESH)
+-- 🖱️ GERENCIADOR DE EVENTOS E TOUCH
 -- =======================================================
 local function loopEventos()
     escanear()
     desenharUI()
-    
-    -- Timer para auto-refresh se ativado
     local timerID = os.startTimer(3)
     
     while rodando do
@@ -228,30 +234,24 @@ local function loopEventos()
         local larg, alt = mon.getSize()
         
         local usarDuasColunas = larg >= 60
-        local maxLinhasPorColuna = alt - 3
+        local maxLinhasPorColuna = alt - 7
         local itensPorPagina = usarDuasColunas and (maxLinhasPorColuna * 2) or maxLinhasPorColuna
         local maxPaginas = math.ceil(#minerios / itensPorPagina)
         if maxPaginas == 0 then maxPaginas = 1 end
         
         if event == "monitor_touch" then
-            -- Linha 1: Controles Superiores
-            if y == 1 then
-                if x >= 2 and x <= 7 then 
-                    escanear() -- [SCAN]
-                elseif x >= 8 and x <= 17 then
-                    cfg.autoRefresh = not cfg.autoRefresh -- [AUTO]
-                elseif x >= (larg - 28) and x <= (larg - 23) then
-                    if cfg.raio > 1 then cfg.raio = cfg.raio - 1 end -- Raio -
-                elseif x >= (larg - 18) and x <= (larg - 13) then
-                    if cfg.raio < 16 then cfg.raio = cfg.raio + 1 end -- Raio +
-                elseif x >= (larg - 10) and x <= (larg - 6) then
-                    if cfg.escala > 0.5 then cfg.escala = cfg.escala - 0.5 end -- Zoom -
-                elseif x >= (larg - 3) then
-                    if cfg.escala < 3.0 then cfg.escala = cfg.escala + 0.5 end -- Zoom +
+            -- Cliques na linha de controles (Linha 3)
+            if y == 3 then
+                if x >= 2 and x <= 7 then escanear() -- SCAN
+                elseif x >= 10 and x <= 20 then cfg.autoRefresh = not cfg.autoRefresh -- AUTO
+                elseif x >= 30 and x <= 32 then if cfg.raio > 1 then cfg.raio = cfg.raio - 1 end -- Raio <
+                elseif x >= 36 and x <= 38 then if cfg.raio < 16 then cfg.raio = cfg.raio + 1 end -- Raio >
+                elseif x >= 48 and x <= 50 then if cfg.escala > 0.5 then cfg.escala = cfg.escala - 0.5 end -- Zoom <
+                elseif x >= 55 and x <= 57 then if cfg.escala < 3.0 then cfg.escala = cfg.escala + 0.5 end -- Zoom >
                 end
                 desenharUI()
                 
-            -- Última Linha: Paginação
+            -- Cliques na Paginação (Última Linha)
             elseif y == alt then
                 if x < (larg / 2) then
                     if cfg.pagina > 1 then cfg.pagina = cfg.pagina - 1 end
@@ -266,7 +266,7 @@ local function loopEventos()
                 escanear()
                 desenharUI()
             end
-            timerID = os.startTimer(3) -- Reinicia o timer de 3 segundos
+            timerID = os.startTimer(3)
         end
     end
 end
@@ -286,6 +286,6 @@ local function loopSaida()
     end
 end
 
-print("🚀 Radar Widescreen Inicializado!")
+print("🚀 Dashboard Widescreen Iniciado!")
 print("Pressione 'Q' no terminal para desligar.")
 parallel.waitForAny(loopSaida, loopEventos)
