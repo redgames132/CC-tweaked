@@ -3,13 +3,13 @@
 -- =======================================================
 local CONFIG = {
     -- Alcance do radar em blocos (Recomendado: entre 4 e 16)
-    RAIO_RADAR = 10,
+    RAIO_RADAR = 32,
 
     -- Tamanho do texto no monitor (0.5 = Pequeno, 1.0 = Normal, 1.5 = Grande)
-    ESCALA_UI = 1.0,
+    ESCALA_UI = 0.5,
 
     -- Lado do monitor: "auto" para buscar sozinho ou "right", "left", "top", "bottom", "back", "front"
-    LADO_MONITOR = "auto",
+    LADO_MONITOR = "right",
 
     -- Lado do Geo Scanner: "top", "bottom", "left", "right", "back", "front" ou "auto"
     LADO_SCANNER = "top",
@@ -18,7 +18,7 @@ local CONFIG = {
     MODO_CONTINUO = true,
 
     -- Tempo em segundos entre cada escaneamento (mínimo recomendado: 2 ou 3)
-    INTERVALO_SEGUNDOS = 3
+    INTERVALO_SEGUNDOS = 1
 }
 
 -- =======================================================
