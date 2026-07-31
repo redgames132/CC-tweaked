@@ -8,18 +8,24 @@ if not mon then print("❌ Erro: Monitor não encontrado!") return end
 if not geo then print("❌ Erro: Geo Scanner não encontrado!") return end
 
 -- =======================================================
--- 📊 ESTADO DO SISTEMA
+-- 📊 ESTADO DO SISTEMA E CORES DE FUNDO
 -- =======================================================
 local cfg = {
-    raio = 8,        -- Raio inicial
-    maxRaio = 16,     -- 🚀 LIMITE MÁXIMO DO RAIO (Pode mudar para 64)
+    raio = 16,        -- Raio inicial
+    maxRaio = 64,     -- 🚀 LIMITE MÁXIMO (Ajusta sozinho se o servidor proibir)
     escala = 0.5,
     pagina = 1,
     autoRefresh = false
 }
 
+-- Novas cores de fundo que NÃO conflitam com nenhuma cor de minério:
+-- (Minérios usam: Cyan, Yellow, LightGray, Red, Lime, Blue, Gray, Orange, White, LightBlue)
+local COR_ZEBRA_1 = colors.purple  -- Roxo
+local COR_ZEBRA_2 = colors.brown   -- Marrom
+
 local minerios = {}
 local rodando = true
+local mensagemAviso = nil
 
 -- =======================================================
 -- 🎨 UTILITÁRIOS DE TELA E CORES
@@ -79,12 +85,24 @@ local function desenharBotao(x, y, texto, corFundo, corTexto)
 end
 
 -- =======================================================
--- 📡 LÓGICA DO SCANNER
+-- 📡 LÓGICA DO SCANNER (COM PROTEÇÃO ANTI-CRASH)
 -- =======================================================
 local function escanear()
     minerios = {}
-    local blocos = geo.scan(cfg.raio)
+    mensagemAviso = nil
     
+    -- pcall executa a busca com segurança sem fechar o programa se o raio for alto demais
+    local sucesso, resultado = pcall(function() return geo.scan(cfg.raio) end)
+    
+    if not sucesso then
+        -- O raio passou do limite permitido no arquivo do servidor!
+        mensagemAviso = "Raio limitado pelo Servidor! Ajustado."
+        cfg.maxRaio = math.max(1, cfg.raio - 1)
+        cfg.raio = cfg.maxRaio
+        return
+    end
+    
+    local blocos = resultado
     if blocos then
         for _, b in ipairs(blocos) do
             if string.find(b.name, "ore") then
@@ -96,12 +114,14 @@ local function escanear()
             end
         end
         table.sort(minerios, function(a, b) return a.dist < b.dist end)
+    else
+        mensagemAviso = "Scanner em Cooldown..."
     end
     cfg.pagina = 1
 end
 
 -- =======================================================
--- 🖥️ RENDERIZAÇÃO DA UI DASHBOARD
+-- 🖥️ RENDERIZAÇÃO DA UI (CORES PERSONALIZADAS)
 -- =======================================================
 local function desenharUI()
     mon.setTextScale(cfg.escala)
@@ -116,7 +136,7 @@ local function desenharUI()
     mon.setCursorPos(1, 1)
     mon.setBackgroundColor(colors.gray)
     mon.write(string.rep(" ", larg))
-    centralizar(1, " ORE RADAR DASHBOARD v3.1 ", colors.cyan, colors.gray)
+    centralizar(1, " ORE RADAR DASHBOARD v3.2 ", colors.cyan, colors.gray)
 
     -- 2. BARRA DE CONTROLES (Linha 3)
     desenharBotao(2, 3, "SCAN", colors.lime, colors.black)
@@ -154,7 +174,7 @@ local function desenharUI()
     local txtCabecalho = string.format("%-8s %-4s %-4s %-3s %-3s %-3s", "MINERIO", "MOD", "DIST", "X", "Y", "Z")
     
     mon.setCursorPos(2, linhaTabela)
-    mon.setTextColor(colors.white)
+    mon.setTextColor(colors.yellow)
     mon.write(txtCabecalho)
     
     if usarDuasColunas then
@@ -168,8 +188,10 @@ local function desenharUI()
     local maxPaginas = math.ceil(#minerios / itensPorPagina)
     if maxPaginas == 0 then maxPaginas = 1 end
     
-    if #minerios == 0 then
-        centralizar(linhaTabela + 2, "NENHUM MINERIO ENCONTRADO NO RAIO " .. cfg.raio, colors.red, colors.black)
+    if mensagemAviso then
+        centralizar(linhaTabela + 2, "⚠️ " .. mensagemAviso, colors.yellow, colors.black)
+    elseif #minerios == 0 then
+        centralizar(linhaTabela + 2, "NENHUM MINERIO NO RAIO " .. cfg.raio, colors.red, colors.black)
     else
         local inicio = (cfg.pagina - 1) * itensPorPagina + 1
         local fim = math.min(inicio + itensPorPagina - 1, #minerios)
@@ -187,18 +209,22 @@ local function desenharUI()
             
             local posX = (col == 1) and 2 or (larguraColuna + 3)
             
-            local corFundo = (linhaAtual % 2 == 0) and colors.black or colors.gray
+            -- FUNDO LISTRADO (ZEBRA) COM ROXO E MARROM:
+            local corFundo = (linhaAtual % 2 == 0) and COR_ZEBRA_1 or COR_ZEBRA_2
             mon.setCursorPos(posX, linhaAtual)
-            mon.setBackgroundColor(corFundo == colors.gray and colors.black or colors.gray)
+            mon.setBackgroundColor(corFundo)
             mon.write(string.rep(" ", larguraColuna))
             
+            -- Ícone de Alerta para minérios próximos
             mon.setCursorPos(posX, linhaAtual)
             mon.setTextColor(m.dist <= 4 and colors.yellow or colors.white)
             mon.write((m.dist <= 4 and "!" or ".") .. " ")
             
+            -- Nome na cor do Minério
             mon.setTextColor(m.cor)
             mon.write(string.format("%-7s ", m.nome))
             
+            -- Coordenadas e Detalhes
             mon.setTextColor(colors.lightGray)
             mon.write(string.format("%-4s ", string.sub(m.mod, 1, 4)))
             mon.setTextColor(colors.white)
@@ -238,7 +264,7 @@ local function loopEventos()
                 if x >= 2 and x <= 7 then escanear()
                 elseif x >= 10 and x <= 20 then cfg.autoRefresh = not cfg.autoRefresh
                 elseif x >= 30 and x <= 32 then if cfg.raio > 1 then cfg.raio = cfg.raio - 1 end
-                elseif x >= 36 and x <= 38 then if cfg.raio < cfg.maxRaio then cfg.raio = cfg.raio + 1 end -- 🚀 Usa maxRaio
+                elseif x >= 36 and x <= 38 then if cfg.raio < cfg.maxRaio then cfg.raio = cfg.raio + 1 end
                 elseif x >= 48 and x <= 50 then if cfg.escala > 0.5 then cfg.escala = cfg.escala - 0.5 end
                 elseif x >= 55 and x <= 57 then if cfg.escala < 3.0 then cfg.escala = cfg.escala + 0.5 end
                 end
