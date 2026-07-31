@@ -189,7 +189,7 @@ local function desenharUI()
             
             local corFundo = (linhaAtual % 2 == 0) and colors.black or colors.gray
             mon.setCursorPos(posX, linhaAtual)
-            mon.setBackgroundColor(corFundo == colors.red and colors.black or colors.red)
+            mon.setBackgroundColor(corFundo == colors.gray and colors.black or colors.gray)
             mon.write(string.rep(" ", larguraColuna))
             
             mon.setCursorPos(posX, linhaAtual)
