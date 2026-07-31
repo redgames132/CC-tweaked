@@ -20,8 +20,8 @@ local cfg = {
 
 -- Novas cores de fundo que NÃO conflitam com nenhuma cor de minério:
 -- (Minérios usam: Cyan, Yellow, LightGray, Red, Lime, Blue, Gray, Orange, White, LightBlue)
-local COR_ZEBRA_1 = colors.White  -- Roxo
-local COR_ZEBRA_2 = colors.Gray   -- Marrom
+local COR_ZEBRA_1 = colors.purple  -- Roxo
+local COR_ZEBRA_2 = colors.brown   -- Marrom
 
 local minerios = {}
 local rodando = true
