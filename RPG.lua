@@ -70,7 +70,7 @@ end
 tocar("entity.player.levelup", 2.0)
 
 -- =======================================================
--- BESTIARIO, CHEFES E EVENTOS (MAIS OURO!)
+-- BESTIARIO E EVENTOS
 -- =======================================================
 local bestiario = {
     {nome = "Slime de Musgo", maxHp = 18, dano = 4, xp = 6, ouro = 15, cor = colors.lime, arte = {"       ", "  ___  ", " (o.o) ", " (___) "}},
@@ -98,7 +98,7 @@ local listaEventos = {
 }
 
 -- =======================================================
--- UTILITARIOS VISUAIS
+-- UTILITARIOS VISUAIS E UI PADRONIZADA
 -- =======================================================
 local function centralizar(y, texto, corTexto, corFundo)
     local larg, _ = mon.getSize()
@@ -137,6 +137,23 @@ local function desenharBarra(x, y, larg, valor, maxValor, corBarra)
     mon.setBackgroundColor(colors.black)
 end
 
+-- NOVO: Sistema de Cabeçalho e Rodapé Global
+local function desenharCabecalho(texto, corFundo, corTexto)
+    local larg, _ = mon.getSize()
+    mon.setCursorPos(1, 1)
+    mon.setBackgroundColor(corFundo or colors.blue)
+    mon.write(string.rep(" ", larg))
+    centralizar(1, " " .. texto .. " ", corTexto or colors.white, corFundo or colors.blue)
+end
+
+local function desenharRodape(texto)
+    local larg, alt = mon.getSize()
+    mon.setCursorPos(1, alt)
+    mon.setBackgroundColor(colors.gray)
+    mon.write(string.rep(" ", larg))
+    centralizar(alt, texto, colors.lightGray, colors.gray)
+end
+
 -- =======================================================
 -- TELAS DO JOGO
 -- =======================================================
@@ -144,68 +161,69 @@ local function desenharMenu()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, _ = mon.getSize()
     
-    centralizar(3, "--- P I L G R A M O ---", colors.yellow, colors.black)
-    centralizar(5, "A Campanha dos Reinos", colors.lightGray, colors.black)
+    desenharCabecalho("P I L G R A M O", colors.gray, colors.yellow)
+    centralizar(4, "A Campanha dos Reinos", colors.lightGray, colors.black)
     
     if fs.exists(ARQUIVO_SAVE) then
-        desenharBotao(math.floor(larg/2) - 10, 8, 20, "CONTINUAR CAMPANHA", colors.cyan, colors.black)
-        desenharBotao(math.floor(larg/2) - 10, 12, 20, "NOVO JOGO", colors.red, colors.white)
+        desenharBotao(math.floor(larg/2) - 12, 8, 24, "CONTINUAR CAMPANHA", colors.cyan, colors.black)
+        desenharBotao(math.floor(larg/2) - 12, 13, 24, "NOVO JOGO", colors.red, colors.white)
     else
-        desenharBotao(math.floor(larg/2) - 10, 10, 20, "NOVO JOGO", colors.lime, colors.black)
+        desenharBotao(math.floor(larg/2) - 12, 10, 24, "NOVO JOGO", colors.lime, colors.black)
     end
+    desenharRodape("Aperte Q no terminal para sair")
 end
 
 local function desenharMapa()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, _ = mon.getSize()
     
-    centralizar(2, "--- MAPA DO MUNDO ---", colors.yellow, colors.black)
-    centralizar(4, "ZONA " .. jogador.zona .. " (NODO " .. jogador.nodo .. " DE 5)", colors.cyan, colors.black)
+    desenharCabecalho("MAPA DO MUNDO - ZONA " .. jogador.zona, colors.blue, colors.white)
     
-    local linhaMapa = " "
-    for i = 1, 5 do
-        if i < jogador.nodo then linhaMapa = linhaMapa .. "(OK) "
-        elseif i == jogador.nodo then linhaMapa = linhaMapa .. "[VOCE] "
-        elseif i == 5 then linhaMapa = linhaMapa .. "[CHEFE] "
-        else linhaMapa = linhaMapa .. "( ? ) "
+    -- Mapa com 6 Nodos (Design Compacto e Moderno)
+    local linhaMapa = ""
+    for i = 1, 6 do
+        if i < jogador.nodo then linhaMapa = linhaMapa .. "(OK)"
+        elseif i == jogador.nodo then linhaMapa = linhaMapa .. "[VC]"
+        elseif i == 6 then linhaMapa = linhaMapa .. "[BOSS]"
+        else linhaMapa = linhaMapa .. "( ? )"
         end
-        if i < 5 then linhaMapa = linhaMapa .. "--- " end
+        if i < 6 then linhaMapa = linhaMapa .. "-" end
     end
     
-    centralizar(7, linhaMapa, colors.white, colors.black)
-    centralizar(10, "HP: " .. jogador.hp .. "/" .. jogador.maxHp .. " | Ouro: " .. jogador.ouro .. " | Nivel: " .. jogador.level, colors.lime, colors.black)
+    centralizar(6, linhaMapa, colors.white, colors.black)
+    centralizar(9, string.format("HP: %d/%d | Ouro: %d | Lvl: %d", jogador.hp, jogador.maxHp, jogador.ouro, jogador.level), colors.lime, colors.black)
     
     desenharBotao(math.floor(larg/2) - 18, 14, 16, "AVANCAR", colors.red, colors.white)
     desenharBotao(math.floor(larg/2) + 2, 14, 16, "MERCADOR", colors.yellow, colors.black)
+    desenharRodape("Prepare-se para o Nodo " .. jogador.nodo .. " de 6")
 end
 
 local function desenharEvento()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, _ = mon.getSize()
     
-    centralizar(3, "--- EVENTO NO CAMINHO ---", colors.yellow, colors.black)
+    desenharCabecalho("EVENTO NO CAMINHO", colors.purple, colors.white)
     
     if eventoAtual then
-        centralizar(6, eventoAtual.nome, eventoAtual.cor, colors.black)
-        
-        desenharCaixa(4, 8, larg - 8, 4, colors.gray)
-        mon.setCursorPos(6, 9)
+        centralizar(5, eventoAtual.nome, eventoAtual.cor, colors.black)
+        desenharCaixa(4, 7, larg - 8, 4, colors.gray)
+        mon.setCursorPos(6, 8)
         mon.setTextColor(colors.white)
         mon.setBackgroundColor(colors.gray)
         mon.write(eventoAtual.desc)
     end
     
     desenharBotao(math.floor(larg/2) - 10, 14, 20, "CONTINUAR", colors.lime, colors.black)
+    desenharRodape("A jornada continua...")
 end
 
 local function desenharLoja()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, _ = mon.getSize()
     
-    centralizar(1, "--- MERCADOR DA ZONA " .. jogador.zona .. " ---", colors.yellow, colors.black)
+    desenharCabecalho("MERCADOR DA ZONA " .. jogador.zona, colors.yellow, colors.black)
     centralizar(3, "Ouro: " .. jogador.ouro .. " | Defesa: " .. jogador.defesa .. " | Dano Extra: +" .. jogador.danoExtra, colors.lime, colors.black)
     
-    -- Preços Atualizados (Mais Barato)
     desenharBotao(2, 5, 26, "POCAO (+25HP) - 10G", colors.gray, colors.white)
     desenharBotao(30, 5, 26, "SUPER POCAO (+50HP) - 25G", colors.gray, colors.white)
     desenharBotao(2, 9, 26, "ESPADA (+5 Dano) - 35G", colors.gray, colors.white)
@@ -220,9 +238,8 @@ local function desenharBatalha()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, _ = mon.getSize()
     
-    mon.setCursorPos(1, 1); mon.setBackgroundColor(colors.blue); mon.write(string.rep(" ", larg))
-    mon.setCursorPos(2, 1); mon.setTextColor(colors.white)
-    mon.write(string.format(" ZONA:%d | NODO:%d | LVL:%d | XP:%d | OURO:%d ", jogador.zona, jogador.nodo, jogador.level, jogador.xp, jogador.ouro))
+    local txtStatus = string.format("ZONA:%d | NODO:%d | LVL:%d | XP:%d | OURO:%d", jogador.zona, jogador.nodo, jogador.level, jogador.xp, jogador.ouro)
+    desenharCabecalho(txtStatus, colors.blue, colors.white)
 
     if inimigoAtual then
         mon.setCursorPos(3, 3); mon.setTextColor(inimigoAtual.cor)
@@ -280,7 +297,8 @@ local function ganharTP(valor) jogador.tp = math.min(100, jogador.tp + valor) en
 local function processarAvanco()
     salvarJogo()
     
-    if jogador.nodo == 5 then
+    -- NOVO LIMITE: NODO 6 É O CHEFE
+    if jogador.nodo == 6 then
         local bossTemplate = chefes[jogador.zona] or chefes[5]
         local multZ = 1.0 + ((jogador.zona - 1) * 0.20)
         local hpCalc = math.floor(bossTemplate.maxHp * multZ)
@@ -295,6 +313,7 @@ local function processarAvanco()
         ESTADO = "BATALHA"
         
     else
+        -- Nodos 1 a 5: 35% de chance de EVENTO
         if math.random(1, 100) <= 35 then
             eventoAtual = listaEventos[math.random(1, #listaEventos)]
             eventoAtual.acao()
@@ -386,7 +405,7 @@ local function loopJogo()
             local temSave = fs.exists(ARQUIVO_SAVE)
             if temSave and y >= 8 and y <= 10 then
                 carregarJogo(); ESTADO = "MAPA"; atualizarTela()
-            elseif (not temSave and y >= 10 and y <= 12) or (temSave and y >= 12 and y <= 14) then
+            elseif (not temSave and y >= 10 and y <= 12) or (temSave and y >= 13 and y <= 15) then
                 jogador = {hp=60, maxHp=60, tp=0, level=1, xp=0, ouro=10, pocoes=3, pocoesMax=0, danoExtra=0, defesa=0, magiaExtra=0, zona=1, nodo=1}
                 ESTADO = "MAPA"; salvarJogo(); atualizarTela()
             end
@@ -403,7 +422,7 @@ local function loopJogo()
         elseif ESTADO == "EVENTO" then
             if y >= 14 and y <= 16 then
                 jogador.nodo = jogador.nodo + 1
-                if jogador.nodo > 5 then jogador.nodo = 5 end
+                if jogador.nodo > 6 then jogador.nodo = 6 end
                 ESTADO = "MAPA"
                 salvarJogo()
                 atualizarTela()
@@ -465,7 +484,7 @@ local function loopJogo()
                             mensagemLog = "Voce nao pode fugir de um CHEFE!"
                             tocar("entity.villager.no", 1); atualizarTela(); os.sleep(1); turnoInimigo(); atualizarTela()
                         else
-                            if math.random(1, 100) <= 75 then
+                            if math.random(1, 100) <= 75 then 
                                 mensagemLog = "Fugiu com sucesso! Voltando ao mapa..."
                                 atualizarTela(); os.sleep(1); ESTADO = "MAPA"; atualizarTela()
                             else
