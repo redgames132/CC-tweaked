@@ -1,5 +1,5 @@
 -- =======================================================
--- PILGRAMO - VERSÃO DEFINITIVA
+-- PILGRAMO - COM MÚSICA 8-BIT RETRÔ
 -- =======================================================
 local mon = peripheral.find("monitor")
 local listaSpeakers = {peripheral.find("speaker")}
@@ -10,7 +10,7 @@ local speakerBGM = listaSpeakers[2] or listaSpeakers[1]
 if not mon then print("[ERRO] Monitor nao encontrado!") return end
 
 local ESTADO = "MENU"
-local volume = 0.8
+local volume = 0.6
 local mensagemLog = "Bem-vindo a Pilgramo!"
 local rodando = true
 
@@ -42,20 +42,53 @@ local function carregarJogo()
     return false
 end
 
+-- =======================================================
+-- SINTETIZADOR DE MÚSICA 8-BIT (CHIPTUNE BGM)
+-- =======================================================
 local function tocar(som, pitch)
     if speakerSFX then pcall(function() speakerSFX.playSound(som, volume, pitch or 1.0) end) end
 end
 
+-- Converte notas musicais em Pitch do Minecraft (0.5 a 2.0)
+local function semitomParaPitch(semitom)
+    return 2 ^ ((semitom - 12) / 12)
+end
+
+-- Melodia estilo RPG de Época / Deltarune
+local melodiaRPG = {
+    {12, 0.20}, {16, 0.20}, {19, 0.20}, {16, 0.20},
+    {12, 0.20}, {16, 0.20}, {19, 0.40},
+    {14, 0.20}, {17, 0.20}, {21, 0.20}, {17, 0.20},
+    {14, 0.20}, {17, 0.20}, {21, 0.40},
+    {10, 0.20}, {14, 0.20}, {17, 0.20}, {14, 0.20},
+    {10, 0.20}, {14, 0.20}, {17, 0.40},
+    {12, 0.20}, {16, 0.20}, {19, 0.20}, {24, 0.20},
+    {19, 0.20}, {16, 0.20}, {12, 0.50}
+}
+
 local function loopMusica()
+    local idx = 1
     while rodando do
-        if speakerBGM and (ESTADO == "MENU" or ESTADO == "BATALHA" or ESTADO == "MAPA") then
-            pcall(function() speakerBGM.playSound("music_disc.stal", 2.0, 1.0) end)
+        if speakerBGM and (ESTADO == "MENU" or ESTADO == "BATALHA" or ESTADO == "MAPA" or ESTADO == "LOJA") then
+            local nota = melodiaRPG[idx]
+            local pitch = semitomParaPitch(nota[1])
+            local duracao = nota[2]
+            
+            pcall(function()
+                speakerBGM.playSound("block.note_block.harp", volume * 0.5, pitch)
+            end)
+            
+            idx = (idx % #melodiaRPG) + 1
+            os.sleep(duracao)
+        else
+            os.sleep(0.5)
         end
-        os.sleep(150)
     end
 end
-tocar("entity.player.levelup", 2.0)
 
+-- =======================================================
+-- BESTIARIO E EVENTOS
+-- =======================================================
 local bestiario = {
     {nome = "Slime de Musgo", maxHp=18, dano=4, xp=6, ouro=15, cor=colors.lime, arte={"       ","  ___  "," (o.o) "," (___) "}},
     {nome = "Lobo Selvagem", maxHp=30, dano=6, xp=10, ouro=25, cor=colors.lightGray, arte={"       "," / \\__ "," (o.o )","  / /  "}},
@@ -63,6 +96,7 @@ local bestiario = {
     {nome = "Esqueleto Negro", maxHp=70, dano=14, xp=25, ouro=60, cor=colors.white, arte={"  .-.  "," (o o) ","  |O|  "," /| |\\ "}},
     {nome = "Cavaleiro Caido", maxHp=110, dano=18, xp=40, ouro=80, cor=colors.gray, arte={"  _|_  "," [o o] "," /[|]\\ ","  / \\  "}}
 }
+
 local chefes = {
     [1] = {nome="REI SLIME", maxHp=180, dano=18, xp=80, ouro=150, cor=colors.lime, arte={"   _^_   ","  /   \\  "," | O_O | ","  \\___/  "}},
     [2] = {nome="LORDE VAMPIRO", maxHp=350, dano=28, xp=200, ouro=300, cor=colors.red, arte={" \\_v_v_/ ","  (o o)  ","  /| |\\  ","  /   \\  "}},
@@ -70,6 +104,7 @@ local chefes = {
     [4] = {nome="REINADO FANTASMA", maxHp=800, dano=48, xp=700, ouro=750, cor=colors.cyan, arte={"  /~~~\\  "," ( o_o ) "," /|   |\\ ","  \\___/  "}},
     [5] = {nome="DRAGAO DO FIM", maxHp=1200, dano=60, xp=1200, ouro=1500, cor=colors.purple, arte={" \\ ||| / ","  (O_O)  "," /|   |\\ ","  |___|  "}}
 }
+
 local listaEventos = {
     {nome="Fonte Sagrada", desc="Recuperou toda sua vida!", cor=colors.cyan, acao=function() jogador.hp=jogador.maxHp end},
     {nome="Bau de Tesouro", desc="Encontrou moedas de ouro!", cor=colors.yellow, acao=function() jogador.ouro=jogador.ouro+80 end},
@@ -78,6 +113,9 @@ local listaEventos = {
     {nome="Fada da Floresta", desc="+15 de Vida Maxima!", cor=colors.pink, acao=function() jogador.maxHp=jogador.maxHp+15; jogador.hp=jogador.hp+15 end}
 }
 
+-- =======================================================
+-- UTILITARIOS VISUAIS E UI
+-- =======================================================
 local function centralizar(y, texto, corTexto, corFundo)
     local larg, _ = mon.getSize()
     local x = math.floor((larg - #texto) / 2) + 1
@@ -107,90 +145,140 @@ local function desenharBarra(x, y, larg, valor, maxValor, corBarra)
     mon.setBackgroundColor(colors.black)
 end
 
-local function atualizarTela()
-    mon.setTextScale(1)
+local function desenharCabecalho(texto, corFundo, corTexto)
     local larg, _ = mon.getSize()
+    mon.setCursorPos(1, 1); mon.setBackgroundColor(corFundo or colors.blue); mon.write(string.rep(" ", larg))
+    centralizar(1, " " .. texto .. " ", corTexto or colors.white, corFundo or colors.blue)
+end
+
+local function desenharRodape(texto)
+    local larg, alt = mon.getSize()
+    mon.setCursorPos(1, alt); mon.setBackgroundColor(colors.gray); mon.write(string.rep(" ", larg))
+    centralizar(alt, texto, colors.lightGray, colors.gray)
+end
+
+-- =======================================================
+-- TELAS DO JOGO
+-- =======================================================
+local function desenharMenu()
     mon.setBackgroundColor(colors.black); mon.clear()
+    local larg, _ = mon.getSize()
+    desenharCabecalho("P I L G R A M O", colors.gray, colors.yellow)
+    centralizar(4, "A Campanha dos Reinos", colors.lightGray, colors.black)
     
-    if ESTADO == "MENU" then
-        centralizar(2, "--- P I L G R A M O ---", colors.yellow, colors.black)
-        centralizar(4, "A Campanha dos Reinos", colors.lightGray, colors.black)
-        if fs.exists(ARQUIVO_SAVE) then
-            desenharBotao(math.floor(larg/2)-12, 7, 24, "CONTINUAR CAMPANHA", colors.cyan, colors.black)
-            desenharBotao(math.floor(larg/2)-12, 11, 24, "NOVO JOGO", colors.red, colors.white)
-        else
-            desenharBotao(math.floor(larg/2)-12, 9, 24, "NOVO JOGO", colors.lime, colors.black)
-        end
-        
-    elseif ESTADO == "MAPA" then
-        centralizar(1, "MAPA DO MUNDO - ZONA " .. jogador.zona, colors.yellow, colors.black)
-        local linhaMapa = ""
-        for i = 1, 6 do
-            if i < jogador.nodo then linhaMapa = linhaMapa .. "(OK)"
-            elseif i == jogador.nodo then linhaMapa = linhaMapa .. "[VC]"
-            elseif i == 6 then linhaMapa = linhaMapa .. "[BOSS]"
-            else linhaMapa = linhaMapa .. "(?)" end
-            if i < 6 then linhaMapa = linhaMapa .. "-" end
-        end
-        centralizar(4, linhaMapa, colors.white, colors.black)
-        centralizar(7, string.format("HP:%d/%d | Ouro:%d | Lvl:%d", jogador.hp, jogador.maxHp, jogador.ouro, jogador.level), colors.lime, colors.black)
-        desenharBotao(math.floor(larg/2)-18, 12, 16, "AVANCAR", colors.red, colors.white)
-        desenharBotao(math.floor(larg/2)+2, 12, 16, "MERCADOR", colors.yellow, colors.black)
-        
-    elseif ESTADO == "EVENTO" then
-        centralizar(2, "--- EVENTO ---", colors.yellow, colors.black)
-        if eventoAtual then
-            centralizar(5, eventoAtual.nome, eventoAtual.cor, colors.black)
-            centralizar(8, eventoAtual.desc, colors.white, colors.black)
-        end
-        desenharBotao(math.floor(larg/2)-10, 13, 20, "CONTINUAR", colors.lime, colors.black)
-        
-    elseif ESTADO == "LOJA" then
-        centralizar(1, "--- MERCADOR DA ZONA " .. jogador.zona .. " ---", colors.yellow, colors.black)
-        centralizar(3, "Ouro: " .. jogador.ouro .. " | Def: " .. jogador.defesa .. " | Dano Extra: +" .. jogador.danoExtra, colors.lime, colors.black)
-        desenharBotao(2, 5, 26, "POCAO (+25HP) - 10G", colors.gray, colors.white)
-        desenharBotao(30, 5, 26, "SUPER POCAO (+50HP) - 25G", colors.gray, colors.white)
-        desenharBotao(2, 9, 26, "ESPADA (+5 Dano) - 35G", colors.gray, colors.white)
-        desenharBotao(30, 9, 26, "ESCUDO (+2 Def) - 35G", colors.gray, colors.white)
-        desenharBotao(2, 13, 26, "ARMADURA (+20 HP) - 45G", colors.gray, colors.white)
-        desenharBotao(30, 13, 26, "ANEL MAGIA (+10 Mag) - 55G", colors.gray, colors.white)
-        desenharBotao(math.floor(larg/2)-10, 17, 20, "VOLTAR", colors.blue, colors.white)
-        
-    elseif ESTADO == "BATALHA" or ESTADO == "SUBMENU_MAGIA" or ESTADO == "SUBMENU_ITEM" then
-        mon.setCursorPos(1, 1); mon.setBackgroundColor(colors.blue); mon.write(string.rep(" ", larg))
-        mon.setCursorPos(2, 1); mon.setTextColor(colors.white); mon.write(string.format("ZONA:%d | NODO:%d | LVL:%d | XP:%d | OURO:%d", jogador.zona, jogador.nodo, jogador.level, jogador.xp, jogador.ouro))
-        
-        if inimigoAtual then
-            mon.setCursorPos(3, 3); mon.setTextColor(inimigoAtual.cor); mon.write(inimigoAtual.nome)
-            desenharBarra(3, 4, 15, inimigoAtual.hp, inimigoAtual.maxHp, colors.red)
-            for i, linha in ipairs(inimigoAtual.arte) do mon.setCursorPos(5, 5+i); mon.setTextColor(inimigoAtual.cor); mon.write(linha) end
-        end
-        
-        mon.setCursorPos(30, 3); mon.setTextColor(colors.cyan); mon.write("PILGRAMO")
-        mon.setCursorPos(30, 5); mon.setTextColor(colors.white); mon.write(string.format("HP: %3d / %3d", jogador.hp, jogador.maxHp))
-        desenharBarra(30, 6, 20, jogador.hp, jogador.maxHp, colors.lime)
-        mon.setCursorPos(30, 8); mon.write(string.format("TP: %3d %%", jogador.tp))
-        desenharBarra(30, 9, 20, jogador.tp, 100, colors.orange)
-        
-        desenharCaixa(2, 12, larg-3, 3, colors.gray)
-        mon.setCursorPos(4, 13); mon.setTextColor(colors.white); mon.setBackgroundColor(colors.gray); mon.write("* " .. mensagemLog)
-        
-        mon.setBackgroundColor(colors.black)
-        if ESTADO == "BATALHA" then
-            desenharBotao(2, 16, 12, "[ ATACAR ]", colors.red, colors.white)
-            desenharBotao(16, 16, 12, "[ MAGIA ]", colors.purple, colors.white)
-            desenharBotao(30, 16, 12, "[ ITENS ]", colors.lime, colors.black)
-            desenharBotao(44, 16, 12, "[ FUGIR ]", colors.yellow, colors.black)
-        elseif ESTADO == "SUBMENU_MAGIA" then
-            desenharBotao(2, 16, 20, "CURA (40 TP)", colors.lime, colors.black)
-            desenharBotao(24, 16, 20, "RAIO (50 TP)", colors.cyan, colors.black)
-            desenharBotao(46, 16, 10, "VOLTAR", colors.gray, colors.white)
-        elseif ESTADO == "SUBMENU_ITEM" then
-            desenharBotao(2, 16, 24, "POCAO ("..(jogador.pocoes+jogador.pocoesMax).."x)", colors.lime, colors.black)
-            desenharBotao(28, 16, 10, "VOLTAR", colors.gray, colors.white)
-        end
+    if fs.exists(ARQUIVO_SAVE) then
+        desenharBotao(math.floor(larg/2)-12, 7, 24, "CONTINUAR CAMPANHA", colors.cyan, colors.black)
+        desenharBotao(math.floor(larg/2)-12, 11, 24, "NOVO JOGO", colors.red, colors.white)
+    else
+        desenharBotao(math.floor(larg/2)-12, 9, 24, "NOVO JOGO", colors.lime, colors.black)
+    end
+    desenharRodape("Aperte Q no terminal para sair")
+end
+
+local function desenharMapa()
+    mon.setBackgroundColor(colors.black); mon.clear()
+    local larg, _ = mon.getSize()
+    desenharCabecalho("MAPA DO MUNDO - ZONA " .. jogador.zona, colors.blue, colors.white)
+    
+    local linhaMapa = ""
+    for i = 1, 6 do
+        if i < jogador.nodo then linhaMapa = linhaMapa .. "(OK)"
+        elseif i == jogador.nodo then linhaMapa = linhaMapa .. "[VC]"
+        elseif i == 6 then linhaMapa = linhaMapa .. "[BOSS]"
+        else linhaMapa = linhaMapa .. "(?)" end
+        if i < 6 then linhaMapa = linhaMapa .. "-" end
+    end
+    
+    centralizar(6, linhaMapa, colors.white, colors.black)
+    centralizar(9, string.format("HP: %d/%d | Ouro: %d | Lvl: %d", jogador.hp, jogador.maxHp, jogador.ouro, jogador.level), colors.lime, colors.black)
+    
+    desenharBotao(math.floor(larg/2)-18, 14, 16, "AVANCAR", colors.red, colors.white)
+    desenharBotao(math.floor(larg/2)+2, 14, 16, "MERCADOR", colors.yellow, colors.black)
+    desenharRodape("Prepare-se para o Nodo " .. jogador.nodo .. " de 6")
+end
+
+local function desenharEvento()
+    mon.setBackgroundColor(colors.black); mon.clear()
+    local larg, _ = mon.getSize()
+    desenharCabecalho("EVENTO NO CAMINHO", colors.purple, colors.white)
+    
+    if eventoAtual then
+        centralizar(5, eventoAtual.nome, eventoAtual.cor, colors.black)
+        desenharCaixa(4, 7, larg - 8, 4, colors.gray)
+        mon.setCursorPos(6, 8); mon.setTextColor(colors.white); mon.setBackgroundColor(colors.gray)
+        mon.write(eventoAtual.desc)
+    end
+    
+    desenharBotao(math.floor(larg/2) - 10, 14, 20, "CONTINUAR", colors.lime, colors.black)
+    desenharRodape("A jornada continua...")
+end
+
+local function desenharLoja()
+    mon.setBackgroundColor(colors.black); mon.clear()
+    local larg, _ = mon.getSize()
+    desenharCabecalho("MERCADOR DA ZONA " .. jogador.zona, colors.yellow, colors.black)
+    centralizar(3, "Ouro: " .. jogador.ouro .. " | Defesa: " .. jogador.defesa .. " | Dano Extra: +" .. jogador.danoExtra, colors.lime, colors.black)
+    
+    desenharBotao(2, 5, 26, "POCAO (+25HP) - 10G", colors.gray, colors.white)
+    desenharBotao(30, 5, 26, "SUPER POCAO (+50HP) - 25G", colors.gray, colors.white)
+    desenharBotao(2, 9, 26, "ESPADA (+5 Dano) - 35G", colors.gray, colors.white)
+    desenharBotao(30, 9, 26, "ESCUDO (+2 Def) - 35G", colors.gray, colors.white)
+    desenharBotao(2, 13, 26, "ARMADURA (+20 HP) - 45G", colors.gray, colors.white)
+    desenharBotao(30, 13, 26, "ANEL MAGIA (+10 Mag) - 55G", colors.gray, colors.white)
+    
+    desenharBotao(math.floor(larg/2) - 10, 17, 20, "VOLTAR AO MAPA", colors.blue, colors.white)
+end
+
+local function desenharBatalha()
+    mon.setBackgroundColor(colors.black); mon.clear()
+    local larg, _ = mon.getSize()
+    desenharCabecalho(string.format("ZONA:%d | NODO:%d | LVL:%d | XP:%d | OURO:%d", jogador.zona, jogador.nodo, jogador.level, jogador.xp, jogador.ouro), colors.blue, colors.white)
+
+    if inimigoAtual then
+        mon.setCursorPos(3, 3); mon.setTextColor(inimigoAtual.cor); mon.write(inimigoAtual.nome)
+        desenharBarra(3, 4, 15, inimigoAtual.hp, inimigoAtual.maxHp, colors.red)
+        for i, linha in ipairs(inimigoAtual.arte) do mon.setCursorPos(5, 5 + i); mon.setTextColor(inimigoAtual.cor); mon.write(linha) end
+    end
+
+    mon.setCursorPos(30, 3); mon.setTextColor(colors.cyan); mon.write("PILGRAMO")
+    mon.setCursorPos(30, 5); mon.setTextColor(colors.white); mon.write(string.format("HP: %3d / %3d", jogador.hp, jogador.maxHp))
+    desenharBarra(30, 6, 20, jogador.hp, jogador.maxHp, colors.lime)
+    mon.setCursorPos(30, 8); mon.write(string.format("TP: %3d %%", jogador.tp))
+    desenharBarra(30, 9, 20, jogador.tp, 100, colors.orange)
+
+    desenharCaixa(2, 12, larg - 3, 3, colors.gray)
+    mon.setCursorPos(4, 13); mon.setTextColor(colors.white); mon.setBackgroundColor(colors.gray); mon.write("* " .. mensagemLog)
+
+    mon.setBackgroundColor(colors.black)
+    if ESTADO == "BATALHA" then
+        desenharBotao(2, 16, 12, "[ ATACAR ]", colors.red, colors.white)
+        desenharBotao(16, 16, 12, "[ MAGIA ]", colors.purple, colors.white)
+        desenharBotao(30, 16, 12, "[ ITENS ]", colors.lime, colors.black)
+        desenharBotao(44, 16, 12, "[ FUGIR ]", colors.yellow, colors.black)
+    elseif ESTADO == "SUBMENU_MAGIA" then
+        desenharBotao(2, 16, 20, "CURA (40 TP)", colors.lime, colors.black)
+        desenharBotao(24, 16, 20, "RAIO (50 TP)", colors.cyan, colors.black)
+        desenharBotao(46, 16, 10, "VOLTAR", colors.gray, colors.white)
+    elseif ESTADO == "SUBMENU_ITEM" then
+        desenharBotao(2, 16, 24, "POCAO (" .. (jogador.pocoes + jogador.pocoesMax) .. "x)", colors.lime, colors.black)
+        desenharBotao(28, 16, 10, "VOLTAR", colors.gray, colors.white)
     end
 end
+
+local function atualizarTela()
+    mon.setTextScale(1)
+    if ESTADO == "MENU" then desenharMenu()
+    elseif ESTADO == "MAPA" then desenharMapa()
+    elseif ESTADO == "EVENTO" then desenharEvento()
+    elseif ESTADO == "LOJA" then desenharLoja()
+    elseif ESTADO == "BATALHA" or ESTADO == "SUBMENU_MAGIA" or ESTADO == "SUBMENU_ITEM" then desenharBatalha()
+    end
+end
+
+-- =======================================================
+-- LOGICA DE COMBATE
+-- =======================================================
+local function ganharTP(valor) jogador.tp = math.min(100, jogador.tp + valor) end
 
 local function turnoInimigo()
     if inimigoAtual and inimigoAtual.hp > 0 then
