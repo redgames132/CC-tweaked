@@ -1,15 +1,20 @@
 -- =======================================================
--- SETUP E PERIFERICOS
+-- SETUP E PERIFERICOS (AGORA COM 2 SPEAKERS!)
 -- =======================================================
 local mon = peripheral.find("monitor")
-local speaker = peripheral.find("speaker")
+local listaSpeakers = {peripheral.find("speaker")}
+
+-- O primeiro speaker cuida dos efeitos sonoros
+local speakerSFX = listaSpeakers[1]
+-- O segundo speaker cuida da música (se não tiver dois, usa o primeiro)
+local speakerBGM = listaSpeakers[2] or listaSpeakers[1]
 
 if not mon then print("[ERRO] Monitor nao encontrado!") return end
 
 -- =======================================================
 -- ESTADO GLOBAL E SAVE
 -- =======================================================
-local ESTADO = "MENU" -- MENU, MAPA, LOJA, BATALHA, EVENTO, SUBMENU_MAGIA, SUBMENU_ITEM
+local ESTADO = "MENU"
 local volume = 0.8
 local mensagemLog = "Bem-vindo a Pilgramo!"
 local rodando = true
@@ -53,16 +58,18 @@ local function carregarJogo()
 end
 
 -- =======================================================
--- AUDIO E BGM
+-- AUDIO E BGM (SISTEMA DUPLO)
 -- =======================================================
 local function tocar(som, pitch)
-    if speaker then pcall(function() speaker.playSound(som, volume, pitch or 1.0) end) end
+    -- Toca os efeitos sonoros no Speaker 1
+    if speakerSFX then pcall(function() speakerSFX.playSound(som, volume, pitch or 1.0) end) end
 end
 
 local function loopMusica()
     while rodando do
-        if speaker and (ESTADO == "MENU" or ESTADO == "BATALHA" or ESTADO == "MAPA") then
-            pcall(function() speaker.playSound("music_disc.stal", 2.0, 1.0) end)
+        if speakerBGM and (ESTADO == "MENU" or ESTADO == "BATALHA" or ESTADO == "MAPA") then
+            -- Toca a música de fundo no Speaker 2
+            pcall(function() speakerBGM.playSound("music_disc.stal", 2.0, 1.0) end)
         end
         os.sleep(150)
     end
@@ -137,7 +144,6 @@ local function desenharBarra(x, y, larg, valor, maxValor, corBarra)
     mon.setBackgroundColor(colors.black)
 end
 
--- NOVO: Sistema de Cabeçalho e Rodapé Global
 local function desenharCabecalho(texto, corFundo, corTexto)
     local larg, _ = mon.getSize()
     mon.setCursorPos(1, 1)
@@ -179,7 +185,6 @@ local function desenharMapa()
     
     desenharCabecalho("MAPA DO MUNDO - ZONA " .. jogador.zona, colors.blue, colors.white)
     
-    -- Mapa com 6 Nodos (Design Compacto e Moderno)
     local linhaMapa = ""
     for i = 1, 6 do
         if i < jogador.nodo then linhaMapa = linhaMapa .. "(OK)"
@@ -297,7 +302,6 @@ local function ganharTP(valor) jogador.tp = math.min(100, jogador.tp + valor) en
 local function processarAvanco()
     salvarJogo()
     
-    -- NOVO LIMITE: NODO 6 É O CHEFE
     if jogador.nodo == 6 then
         local bossTemplate = chefes[jogador.zona] or chefes[5]
         local multZ = 1.0 + ((jogador.zona - 1) * 0.20)
@@ -313,7 +317,6 @@ local function processarAvanco()
         ESTADO = "BATALHA"
         
     else
-        -- Nodos 1 a 5: 35% de chance de EVENTO
         if math.random(1, 100) <= 35 then
             eventoAtual = listaEventos[math.random(1, #listaEventos)]
             eventoAtual.acao()
@@ -412,10 +415,8 @@ local function loopJogo()
 
         elseif ESTADO == "MAPA" then
             if y >= 14 and y <= 16 then
-                if x >= math.floor(larg/2)-18 and x <= math.floor(larg/2)-2 then
-                    processarAvanco()
-                elseif x >= math.floor(larg/2)+2 and x <= math.floor(larg/2)+18 then
-                    ESTADO = "LOJA"; atualizarTela()
+                if x >= math.floor(larg/2)-18 and x <= math.floor(larg/2)-2 then processarAvanco()
+                elseif x >= math.floor(larg/2)+2 and x <= math.floor(larg/2)+18 then ESTADO = "LOJA"; atualizarTela()
                 end
             end
 
@@ -423,9 +424,7 @@ local function loopJogo()
             if y >= 14 and y <= 16 then
                 jogador.nodo = jogador.nodo + 1
                 if jogador.nodo > 6 then jogador.nodo = 6 end
-                ESTADO = "MAPA"
-                salvarJogo()
-                atualizarTela()
+                ESTADO = "MAPA"; salvarJogo(); atualizarTela()
             end
 
         elseif ESTADO == "LOJA" then
@@ -461,12 +460,8 @@ local function loopJogo()
                         
                         local multiplicador = 1
                         if math.random(1, 100) <= 20 then 
-                            multiplicador = 2
-                            tocar("entity.player.attack.crit", 1)
-                            mensagemLog = "CRITICO! "
-                        else
-                            mensagemLog = ""
-                        end
+                            multiplicador = 2; tocar("entity.player.attack.crit", 1); mensagemLog = "CRITICO! "
+                        else mensagemLog = "" end
                         
                         local dano = (math.random(6 + (jogador.level*2), 12 + (jogador.level*3)) + jogador.danoExtra) * multiplicador
                         inimigoAtual.hp = inimigoAtual.hp - dano
@@ -475,10 +470,8 @@ local function loopJogo()
                         atualizarTela(); os.sleep(1)
                         if inimigoAtual.hp <= 0 then vitoria() else turnoInimigo(); atualizarTela() end
                     
-                    elseif x >= 16 and x <= 28 then
-                        ESTADO = "SUBMENU_MAGIA"; atualizarTela()
-                    elseif x >= 30 and x <= 42 then
-                        ESTADO = "SUBMENU_ITEM"; atualizarTela()
+                    elseif x >= 16 and x <= 28 then ESTADO = "SUBMENU_MAGIA"; atualizarTela()
+                    elseif x >= 30 and x <= 42 then ESTADO = "SUBMENU_ITEM"; atualizarTela()
                     elseif x >= 44 and x <= 56 then
                         if inimigoAtual.isBoss then
                             mensagemLog = "Voce nao pode fugir de um CHEFE!"
