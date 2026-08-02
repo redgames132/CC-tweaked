@@ -1,22 +1,24 @@
--- Abre a conexão de rede no modem que estiver conectado
-peripheral.find("modem", rednet.open)
 local speaker = peripheral.find("speaker")
 
 if not speaker then
-    print("Erro: Speaker nao encontrado neste computador!")
+    print("ERRO: Coloque um bloco 'Speaker' encostado neste computador!")
     return
 end
 
-print("Caixa de Som ligada! Aguardando o jogo iniciar...")
+print("=============================")
+print(" 📻 RÁDIO PILGRAMO LIGADA!   ")
+print("=============================")
+print("Tocando a trilha sonora 8-Bit infinita...")
+print("Pressione CTRL+T segurado para desligar.")
 
-local tocando = false
-local volume = 0.6
+local volume = 1.0
 
+-- Fórmula para afinar o som do Minecraft perfeitamente
 local function semitomParaPitch(semitom)
     return 2 ^ ((semitom - 12) / 12)
 end
 
--- Melodia 8-Bit do Pilgramo
+-- A melodia heroica do jogo
 local melodia = {
     {12, 0.20}, {16, 0.20}, {19, 0.20}, {16, 0.20},
     {12, 0.20}, {16, 0.20}, {19, 0.40},
@@ -28,34 +30,17 @@ local melodia = {
     {19, 0.20}, {16, 0.20}, {12, 0.50}
 }
 
--- Fica escutando as ordens do Computador 1
-local function escutarRede()
-    while true do
-        local id, mensagem = rednet.receive()
-        if mensagem == "TOCA_MUSICA" then
-            tocando = true
-            print("Tocando musica!")
-        elseif mensagem == "PARA_MUSICA" then
-            tocando = false
-            print("Musica pausada.")
-        end
+-- Loop infinito de música
+while true do
+    for i = 1, #melodia do
+        local nota = melodia[i]
+        
+        -- O pcall garante que se o som falhar 1 vez, o rádio não desliga
+        pcall(function() 
+            speaker.playSound("block.note_block.harp", volume, semitomParaPitch(nota[1])) 
+        end)
+        
+        os.sleep(nota[2])
     end
+    os.sleep(0.5) -- Pausa rápida antes de repetir a música
 end
-
--- Toca a música em loop se a ordem for 'tocando = true'
-local function tocarLoop()
-    local idx = 1
-    while true do
-        if tocando then
-            local nota = melodia[idx]
-            pcall(function() speaker.playSound("block.note_block.harp", volume, semitomParaPitch(nota[1])) end)
-            idx = (idx % #melodia) + 1
-            os.sleep(nota[2])
-        else
-            os.sleep(0.5) -- Pausa se o jogo pedir para parar
-        end
-    end
-end
-
--- Roda os dois sistemas ao mesmo tempo
-parallel.waitForAny(escutarRede, tocarLoop)
