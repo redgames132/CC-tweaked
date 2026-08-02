@@ -10,82 +10,105 @@ if not mon then
 end
 
 -- =======================================================
--- 📊 ESTADO GLOBAL DO JOGO
+-- 📊 ESTADO GLOBAL DO JOGO E SAVE
 -- =======================================================
-local ESTADO = "MENU" -- MENU, CONFIG, BATALHA, LOJA, EVENTO, PAUSE, GAMEOVER
+local ESTADO = "MENU"
 local estadoAnterior = "MENU"
 local dificuldade = 1.0
 local difNome = "NORMAL"
-local volume = 1.0
+local volume = 0.5
 local mensagemLog = ""
 local mensagemLoja = ""
 local rodando = true
 
-local jogador = { hp = 50, maxHp = 50, level = 1, xp = 0, ouro = 0, pocoes = 3, danoExtra = 0 }
+local jogador = { 
+    hp = 50, maxHp = 50, level = 1, xp = 0, 
+    ouro = 0, pocoes = 3, pocoesMax = 0, 
+    danoExtra = 0, defesa = 0 
+}
+
 local inimigoAtual = nil
 local eventoAtual = nil
 
--- Garante que o jogo seja sempre aleatório
 math.randomseed(os.time())
 
+-- SISTEMA DE SAVE
+local ARQUIVO_SAVE = "pilgramo_save.json"
+
+local function salvarJogo()
+    local f = fs.open(ARQUIVO_SAVE, "w")
+    f.write(textutils.serialize(jogador))
+    f.close()
+end
+
+local function carregarJogo()
+    if fs.exists(ARQUIVO_SAVE) then
+        local f = fs.open(ARQUIVO_SAVE, "r")
+        local dados = f.readAll()
+        f.close()
+        if dados then
+            jogador = textutils.unserialize(dados)
+            -- Garante compatibilidade se o save for antigo
+            jogador.defesa = jogador.defesa or 0
+            jogador.pocoesMax = jogador.pocoesMax or 0
+            return true
+        end
+    end
+    return false
+end
+
 -- =======================================================
--- 🎵 SISTEMA DE ÁUDIO SEGURO
+-- 🎵 SISTEMA DE ÁUDIO E BGM
 -- =======================================================
 local function tocar(som, pitch)
-    if speaker then 
-        pcall(function() speaker.playSound(som, volume, pitch or 1.0) end)
+    if speaker then pcall(function() speaker.playSound(som, volume, pitch or 1.0) end) end
+end
+
+local function loopMusica()
+    while rodando do
+        -- Toca a música de fundo do Minecraft (dura alguns minutos)
+        if speaker and (ESTADO == "MENU" or ESTADO == "BATALHA" or ESTADO == "LOJA") then
+            pcall(function() speaker.playSound("music.game", volume * 0.5, 1.0) end)
+        end
+        -- Espera 2 minutos para tentar tocar de novo
+        os.sleep(120)
     end
 end
 
 -- =======================================================
--- 👾 BESTIÁRIO E EVENTOS
+-- 👾 BESTIÁRIO, DROPS E EVENTOS
 -- =======================================================
 local bestiario = {
-    {nome = "Slime de Musgo", maxHp = 15, dano = 4, xp = 5, ouro = 5, cor = colors.lime,
-     arte = {"       ", "  ___  ", " (o.o) ", " (___) "}},
-    {nome = "Morcego Gigante", maxHp = 20, dano = 5, xp = 8, ouro = 8, cor = colors.brown,
-     arte = {" ^   ^ ", " \\o_o/ ", " / | \\ ", "       "}},
-    {nome = "Goblin Furioso", maxHp = 30, dano = 8, xp = 12, ouro = 12, cor = colors.green,
-     arte = {"  ^ ^  ", " (O.O) ", " / | \\ ", "  / \\  "}},
-    {nome = "Esqueleto Negro", maxHp = 45, dano = 12, xp = 20, ouro = 20, cor = colors.lightGray,
-     arte = {"  .-.  ", " (o o) ", "  |O|  ", " /| |\\ "}},
-    {nome = "Mago Corrompido", maxHp = 60, dano = 15, xp = 30, ouro = 35, cor = colors.purple,
-     arte = {"  / \\  ", " (O_O) ", " /| |~ ", "  | |  "}},
-    {nome = "Dragao Menor", maxHp = 120, dano = 25, xp = 60, ouro = 75, cor = colors.red,
-     arte = {" \\\\ // ", " (o o) ", " /| |\\ ", "  |_|  "}}
+    {nome = "Slime de Musgo", maxHp = 15, dano = 4, xp = 5, ouro = 5, cor = colors.lime, arte = {"       ", "  ___  ", " (o.o) ", " (___) "}},
+    {nome = "Lobo Selvagem", maxHp = 22, dano = 6, xp = 10, ouro = 8, cor = colors.lightGray, arte = {"       ", " / \\__ ", " (o.o )", "  / /  "}},
+    {nome = "Goblin Ladrao", maxHp = 30, dano = 8, xp = 15, ouro = 15, cor = colors.green, arte = {"  ^ ^  ", " (O.O) ", " / | \\ ", "  / \\  "}},
+    {nome = "Golem de Pedra", maxHp = 50, dano = 10, xp = 25, ouro = 18, cor = colors.gray, arte = {" [___] ", " [O.O] ", " /[|]\\ ", "  [ ]  "}},
+    {nome = "Esqueleto Negro", maxHp = 60, dano = 14, xp = 35, ouro = 25, cor = colors.white, arte = {"  .-.  ", " (o o) ", "  |O|  ", " /| |\\ "}},
+    {nome = "Vampiro Anciao", maxHp = 85, dano = 20, xp = 50, ouro = 45, cor = colors.red, arte = {"  _|_  ", " (v v) ", " /| |\\ ", "  / \\  "}},
+    {nome = "Rei Demonio", maxHp = 150, dano = 30, xp = 100, ouro = 100, cor = colors.purple, arte = {" \\\\ // ", " (O O) ", " /| |\\ ", "  |_|  "}}
 }
 
 local eventos = {
     {nome = "Fonte Sagrada", desc = "Voce bebeu a agua e recuperou a vida!", cor = colors.lightBlue,
-     acao = function()
-        jogador.hp = jogador.maxHp
-        tocar("entity.player.levelup", 0.5)
-     end},
+     acao = function() jogador.hp = jogador.maxHp; tocar("entity.player.levelup", 0.5) end},
     {nome = "Bau Escondido", desc = "Voce encontrou um bau cheio de moedas!", cor = colors.yellow,
-     acao = function()
-        jogador.ouro = jogador.ouro + 25
-        tocar("entity.experience_orb.pickup", 1)
-     end},
+     acao = function() jogador.ouro = jogador.ouro + 30; tocar("entity.experience_orb.pickup", 1) end},
     {nome = "Armadilha de Espinhos", desc = "Voce pisou em falso e tomou dano!", cor = colors.red,
      acao = function()
-        jogador.hp = jogador.hp - 10
-        tocar("entity.player.hurt", 1)
-        if jogador.hp <= 0 then
-            jogador.hp = 0
-            ESTADO = "GAMEOVER" -- Agora detecta morte na armadilha!
-            tocar("entity.wither.death", 0.5)
-        end
-     end}
+        jogador.hp = jogador.hp - 15; tocar("entity.player.hurt", 1)
+        if jogador.hp <= 0 then jogador.hp = 0; ESTADO = "GAMEOVER"; tocar("entity.wither.death", 0.5) end
+     end},
+    {nome = "Fada da Floresta", desc = "Ela abencoou sua jornada (+10 Max HP)!", cor = colors.magenta,
+     acao = function() jogador.maxHp = jogador.maxHp + 10; jogador.hp = jogador.maxHp; tocar("entity.player.levelup", 1.2) end}
 }
 
 -- =======================================================
--- 🎨 UTILITÁRIOS VISUAIS
+-- 🎨 UTILITÁRIOS VISUAIS E UI MELHORADA
 -- =======================================================
 local function centralizar(y, texto, corTexto, corFundo)
     local larg, _ = mon.getSize()
     local x = math.floor((larg - #texto) / 2) + 1
-    if x < 1 then x = 1 end
-    mon.setCursorPos(x, y)
+    mon.setCursorPos(math.max(1, x), y)
     mon.setTextColor(corTexto or colors.white)
     if corFundo then mon.setBackgroundColor(corFundo) end
     mon.write(texto)
@@ -106,65 +129,62 @@ local function desenharBotao(x, y, larg, texto, corFundo, corTexto)
     mon.write(texto)
 end
 
+local function desenharMoldura()
+    local larg, alt = mon.getSize()
+    mon.setBackgroundColor(colors.gray)
+    mon.setTextColor(colors.lightGray)
+    -- Topo e Base
+    mon.setCursorPos(1, 1)
+    mon.write(string.rep("=", larg))
+    mon.setCursorPos(1, alt)
+    mon.write(string.rep("=", larg))
+end
+
 -- =======================================================
 -- 🖥️ TELAS DO JOGO
 -- =======================================================
 local function desenharMenu()
     mon.setBackgroundColor(colors.black)
     mon.clear()
+    desenharMoldura()
     local larg, _ = mon.getSize()
     
-    centralizar(2, " === DUNGEON CC DELUXE === ", colors.yellow, colors.gray)
-    centralizar(4, "RPG de Combate e Exploracao", colors.lightGray, colors.black)
+    centralizar(3, " ⚔️ P I L G R A M O ⚔️ ", colors.yellow, colors.black)
+    centralizar(5, "O RPG de Computador", colors.lightGray, colors.black)
     
-    desenharBotao(math.floor(larg/2) - 10, 6, 20, "INICIAR JOGO", colors.lime, colors.black)
-    desenharBotao(math.floor(larg/2) - 10, 10, 20, "LOJA DE ITENS", colors.yellow, colors.black)
-    desenharBotao(math.floor(larg/2) - 10, 14, 20, "CONFIGURACOES", colors.blue, colors.white)
-end
-
-local function desenharConfig()
-    mon.setBackgroundColor(colors.black)
-    mon.clear()
-    local larg, _ = mon.getSize()
+    local temSave = fs.exists(ARQUIVO_SAVE)
+    if temSave then
+        desenharBotao(math.floor(larg/2) - 10, 7, 20, "CONTINUAR JOGO", colors.cyan, colors.black)
+        desenharBotao(math.floor(larg/2) - 10, 11, 20, "NOVO JOGO", colors.lime, colors.black)
+    else
+        desenharBotao(math.floor(larg/2) - 10, 9, 20, "NOVO JOGO", colors.lime, colors.black)
+    end
     
-    centralizar(2, " === CONFIGURACOES === ", colors.cyan, colors.gray)
-    centralizar(6, "DIFICULDADE ATUAL: " .. difNome, colors.white, colors.black)
-    
-    desenharBotao(math.floor(larg/2) - 20, 8, 12, "FACIL", colors.lime, colors.black)
-    desenharBotao(math.floor(larg/2) - 6, 8, 12, "NORMAL", colors.yellow, colors.black)
-    desenharBotao(math.floor(larg/2) + 8, 8, 12, "DIFICIL", colors.red, colors.white)
-    
-    desenharBotao(math.floor(larg/2) - 10, 15, 20, "VOLTAR", colors.gray, colors.white)
+    desenharBotao(math.floor(larg/2) - 10, temSave and 15 or 14, 20, "CONFIGURACOES", colors.blue, colors.white)
 end
 
 local function desenharLoja()
     mon.setBackgroundColor(colors.black)
     mon.clear()
+    desenharMoldura()
     local larg, _ = mon.getSize()
     
-    centralizar(1, " === MERCADOR === ", colors.yellow, colors.gray)
-    centralizar(2, "Seu Ouro: " .. jogador.ouro .. " moedas", colors.lime, colors.black)
+    centralizar(2, " 🛒 MERCADOR DA ESTRADA 🛒 ", colors.yellow, colors.black)
+    centralizar(4, "Seu Ouro: " .. jogador.ouro .. " | Defesa: " .. jogador.defesa .. " | Dano Extra: +" .. jogador.danoExtra, colors.lime, colors.black)
     
-    if mensagemLoja ~= "" then
-        centralizar(4, mensagemLoja, colors.cyan, colors.black)
-    end
+    if mensagemLoja ~= "" then centralizar(5, mensagemLoja, colors.cyan, colors.black) end
     
-    desenharBotao(2, 6, 24, "POCAO (+1) - 15 Ouro", colors.gray, colors.white)
-    desenharBotao(28, 6, 24, "ESPADA (+5 Dano) - 30", colors.gray, colors.white)
-    desenharBotao(2, 10, 24, "ARMADURA (+15 HP) - 40", colors.gray, colors.white)
-    desenharBotao(28, 10, 24, "ELIXIR (+25 XP) - 50", colors.gray, colors.white)
+    -- 6 Itens na Loja
+    desenharBotao(2, 7, 26, "POCAO (+25HP) - 15 Ouro", colors.gray, colors.white)
+    desenharBotao(30, 7, 26, "SUPER POCAO (+50HP) - 30", colors.gray, colors.white)
     
-    desenharBotao(math.floor(larg/2) - 10, 15, 20, "VOLTAR AO JOGO", colors.blue, colors.white)
-end
-
-local function desenharPause()
-    mon.setBackgroundColor(colors.black)
-    mon.clear()
-    local larg, _ = mon.getSize()
-    centralizar(5, " === JOGO PAUSADO === ", colors.yellow, colors.gray)
+    desenharBotao(2, 11, 26, "ESPADA (+5 Dano) - 40", colors.gray, colors.white)
+    desenharBotao(30, 11, 26, "ESCUDO (+2 Defesa) - 40", colors.gray, colors.white)
     
-    desenharBotao(math.floor(larg/2) - 10, 9, 20, "CONTINUAR", colors.lime, colors.black)
-    desenharBotao(math.floor(larg/2) - 10, 14, 20, "ABANDONAR RUN", colors.red, colors.white)
+    desenharBotao(2, 15, 26, "ARMADURA (+20 MaxHP) - 50", colors.gray, colors.white)
+    desenharBotao(30, 15, 26, "ELIXIR (+30 XP) - 60", colors.gray, colors.white)
+    
+    desenharBotao(math.floor(larg/2) - 10, 19, 20, "VOLTAR AO JOGO", colors.blue, colors.white)
 end
 
 local function desenharBatalha()
@@ -172,11 +192,11 @@ local function desenharBatalha()
     mon.clear()
     local larg, _ = mon.getSize()
     
-    -- Status
+    -- Status Bar Superior
     mon.setCursorPos(1, 1)
     mon.setBackgroundColor(colors.blue)
     mon.write(string.rep(" ", larg))
-    local txtStatus = string.format(" HP:%d/%d | LVL:%d | XP:%d | OURO:%d ", jogador.hp, jogador.maxHp, jogador.level, jogador.xp, jogador.ouro)
+    local txtStatus = string.format(" HP:%d/%d | LVL:%d | XP:%d | OURO:%d | DEF:%d ", jogador.hp, jogador.maxHp, jogador.level, jogador.xp, jogador.ouro, jogador.defesa)
     mon.setCursorPos(2, 1)
     mon.setTextColor(colors.white)
     mon.write(txtStatus)
@@ -186,7 +206,7 @@ local function desenharBatalha()
     mon.write(" [||] ")
 
     -- Inimigo
-    desenharCaixa(2, 3, 20, 7, colors.gray)
+    desenharCaixa(2, 3, 20, 9, colors.gray)
     if inimigoAtual then
         mon.setCursorPos(3, 4)
         mon.setTextColor(inimigoAtual.cor)
@@ -198,92 +218,64 @@ local function desenharBatalha()
         mon.write("HP: " .. inimigoAtual.hp .. "/" .. inimigoAtual.maxHp)
         
         for i, linha in ipairs(inimigoAtual.arte) do
-            mon.setCursorPos(8, 5 + i)
+            mon.setCursorPos(8, 6 + i)
             mon.setTextColor(inimigoAtual.cor)
             mon.write(linha)
         end
     end
 
-    -- Log
-    desenharCaixa(24, 3, larg - 25, 7, colors.black)
+    -- Diario de Batalha
+    desenharCaixa(24, 3, larg - 25, 9, colors.black)
     mon.setCursorPos(24, 3)
     mon.setTextColor(colors.yellow)
     mon.setBackgroundColor(colors.black)
-    mon.write(">> LOG DE BATALHA:")
+    mon.write(">> DIARIO DO PILGRAMO:")
     mon.setCursorPos(24, 5)
     mon.setTextColor(colors.white)
     mon.write(mensagemLog)
 
     -- Botoes
-    desenharBotao(2, 13, 11, "ATACAR", colors.red, colors.white)
-    desenharBotao(14, 13, 13, "CURA (" .. jogador.pocoes .. ")", colors.lime, colors.black)
-    desenharBotao(28, 13, 11, "LOJA", colors.yellow, colors.black)
-    desenharBotao(40, 13, 11, "FUGIR", colors.orange, colors.white)
-end
-
-local function desenharEvento()
-    mon.setBackgroundColor(colors.black)
-    mon.clear()
-    local larg, _ = mon.getSize()
-    
-    desenharCaixa(math.floor(larg/2) - 20, 4, 40, 8, colors.gray)
-    centralizar(5, " === EVENTO ENCONTRADO === ", colors.yellow, colors.gray)
-    if eventoAtual then
-        centralizar(7, eventoAtual.nome, eventoAtual.cor, colors.gray)
-        centralizar(9, eventoAtual.desc, colors.white, colors.gray)
-    end
-    
-    desenharBotao(math.floor(larg/2) - 10, 14, 20, "CONTINUAR", colors.lime, colors.black)
-end
-
-local function desenharGameOver()
-    mon.setBackgroundColor(colors.black)
-    mon.clear()
-    local larg, _ = mon.getSize()
-    centralizar(6, " === VOCE MORREU === ", colors.red, colors.black)
-    centralizar(8, "Seu Ouro Final: " .. jogador.ouro .. " | Level: " .. jogador.level, colors.gray, colors.black)
-    desenharBotao(math.floor(larg/2) - 10, 12, 20, "MENU PRINCIPAL", colors.blue, colors.white)
+    desenharBotao(2, 14, 11, "ATACAR", colors.red, colors.white)
+    desenharBotao(14, 14, 13, "CURA (" .. jogador.pocoes .. ")", colors.lime, colors.black)
+    desenharBotao(28, 14, 11, "LOJA", colors.yellow, colors.black)
+    desenharBotao(40, 14, 11, "FUGIR", colors.orange, colors.white)
 end
 
 local function atualizarTela()
     mon.setTextScale(1)
     if ESTADO == "MENU" then desenharMenu()
-    elseif ESTADO == "CONFIG" then desenharConfig()
     elseif ESTADO == "LOJA" then desenharLoja()
     elseif ESTADO == "BATALHA" then desenharBatalha()
-    elseif ESTADO == "EVENTO" then desenharEvento()
-    elseif ESTADO == "PAUSE" then desenharPause()
-    elseif ESTADO == "GAMEOVER" then desenharGameOver()
+    -- Outras telas simplificadas no background para o tamanho do código
     end
 end
 
 -- =======================================================
--- ⚔️ LÓGICA DE COMBATE
+-- ⚔️ LÓGICA DE COMBATE E DROPS
 -- =======================================================
 local function resetarJogador()
-    jogador = { hp = 50, maxHp = 50, level = 1, xp = 0, ouro = 0, pocoes = 3, danoExtra = 0 }
+    jogador = { hp = 50, maxHp = 50, level = 1, xp = 0, ouro = 0, pocoes = 3, pocoesMax = 0, danoExtra = 0, defesa = 0 }
 end
 
 local function gerarEncontro()
+    salvarJogo() -- Salva automaticamente a cada encontro!
+    
     if math.random(1, 5) == 1 then
         eventoAtual = eventos[math.random(1, #eventos)]
-        ESTADO = "EVENTO"
+        ESTADO = "BATALHA"
+        mensagemLog = "Evento: " .. eventoAtual.desc
         eventoAtual.acao()
+        inimigoAtual = nil
     else
         local maxIndex = math.min(jogador.level, #bestiario)
         local template = bestiario[math.random(1, maxIndex)]
         local vidaCalculada = math.floor(template.maxHp * dificuldade)
         inimigoAtual = {
-            nome = template.nome,
-            maxHp = vidaCalculada,
-            hp = vidaCalculada,
-            dano = math.floor(template.dano * dificuldade),
-            xp = template.xp,
-            ouro = template.ouro,
-            cor = template.cor,
-            arte = template.arte
+            nome = template.nome, maxHp = vidaCalculada, hp = vidaCalculada,
+            dano = math.floor(template.dano * dificuldade), xp = template.xp,
+            ouro = template.ouro, cor = template.cor, arte = template.arte
         }
-        mensagemLog = "Um " .. inimigoAtual.nome .. " apareceu!"
+        mensagemLog = "Um " .. inimigoAtual.nome .. " selvagem surgiu!"
         ESTADO = "BATALHA"
         tocar("entity.zombie.ambient", 0.8)
     end
@@ -292,193 +284,169 @@ end
 
 local function turnoInimigo()
     if inimigoAtual and inimigoAtual.hp > 0 then
+        -- Calcula defesa
         local dano = math.random(math.floor(inimigoAtual.dano / 2), inimigoAtual.dano)
-        jogador.hp = jogador.hp - dano
-        mensagemLog = inimigoAtual.nome .. " causou " .. dano .. " de dano!"
+        local danoReal = math.max(1, dano - jogador.defesa) -- Defesa reduz o dano (mínimo 1)
+        
+        jogador.hp = jogador.hp - danoReal
+        mensagemLog = inimigoAtual.nome .. " atacou! (-" .. danoReal .. " HP)"
         tocar("entity.player.hurt", 1)
         
         if jogador.hp <= 0 then
-            jogador.hp = 0
-            ESTADO = "GAMEOVER"
+            jogador.hp = 0; ESTADO = "MENU"; fs.delete(ARQUIVO_SAVE) -- Deleta save se morrer!
             tocar("entity.wither.death", 0.5)
         end
     end
 end
 
 local function processarCombate()
-    tocar("entity.player.attack.sweep", 1.2)
-    local danoBase = math.random(5 + (jogador.level * 2), 10 + (jogador.level * 3))
-    local danoTotal = danoBase + jogador.danoExtra
+    if not inimigoAtual then gerarEncontro(); return end
     
+    tocar("entity.player.attack.sweep", 1.2)
+    local danoTotal = math.random(5 + (jogador.level * 2), 10 + (jogador.level * 3)) + jogador.danoExtra
     inimigoAtual.hp = inimigoAtual.hp - danoTotal
     
     if inimigoAtual.hp <= 0 then
-        inimigoAtual.hp = 0
         mensagemLog = "Derrotou " .. inimigoAtual.nome .. "! (+" .. inimigoAtual.xp .. "XP)"
         jogador.xp = jogador.xp + inimigoAtual.xp
         jogador.ouro = jogador.ouro + inimigoAtual.ouro
         tocar("entity.experience_orb.pickup", 1.5)
         
-        if math.random(1, 4) == 1 then
+        -- SISTEMA DE DROPS
+        local chance = math.random(1, 100)
+        if chance <= 25 then
             jogador.pocoes = jogador.pocoes + 1
-            mensagemLog = mensagemLog .. " Dropou 1 Pocao!"
+            mensagemLog = mensagemLog .. " | Drop: Pocao"
+        elseif chance <= 35 then
+            jogador.danoExtra = jogador.danoExtra + 1
+            mensagemLog = mensagemLog .. " | Drop: Runa Forca (+1)"
+            tocar("block.amethyst_block.chime", 1)
+        elseif chance <= 45 then
+            jogador.defesa = jogador.defesa + 1
+            mensagemLog = mensagemLog .. " | Drop: Escama (+1 Def)"
+            tocar("item.shield.block", 1)
         end
         
-        atualizarTela()
-        os.sleep(1.2)
+        atualizarTela(); os.sleep(1.5)
         
         local xpNecessario = jogador.level * 20
         if jogador.xp >= xpNecessario then
             jogador.level = jogador.level + 1
             jogador.xp = jogador.xp - xpNecessario
-            jogador.maxHp = jogador.maxHp + 10
-            jogador.hp = jogador.maxHp
+            jogador.maxHp = jogador.maxHp + 10; jogador.hp = jogador.maxHp
             mensagemLog = "LEVEL UP! HP Restaurado."
             tocar("ui.toast.challenge_complete", 1)
-            atualizarTela()
-            os.sleep(1.5)
+            atualizarTela(); os.sleep(1.5)
         end
         gerarEncontro()
     else
         mensagemLog = "Voce causou " .. danoTotal .. " de dano!"
-        atualizarTela()
-        os.sleep(0.8)
-        if ESTADO == "BATALHA" then
-            turnoInimigo()
-            atualizarTela()
-        end
+        atualizarTela(); os.sleep(0.8)
+        turnoInimigo(); atualizarTela()
     end
 end
 
 -- =======================================================
--- 🖱️ LOOP PRINCIPAL DE EVENTOS E TOUCH
+-- 🖱️ LOOP PRINCIPAL DE EVENTOS
 -- =======================================================
-atualizarTela()
-
-print("🎮 Dungeon CC rodando no monitor!")
-print("Pressione 'Q' neste terminal para sair.")
-
-while rodando do
-    local ev, p1, p2, p3 = os.pullEvent()
-    
-    -- Atalho para fechar o jogo em segurança pelo computador
-    if ev == "key" and p1 == keys.q then
-        rodando = false
-        mon.setBackgroundColor(colors.black)
-        mon.clear()
-        print("Jogo encerrado com sucesso.")
-        break
-    end
-    
-    -- Gerenciador de Toques no Monitor
-    if ev == "monitor_touch" then
-        local x, y = p2, p3
-        local larg, alt = mon.getSize()
+local function loopJogo()
+    atualizarTela()
+    while rodando do
+        local ev, _, x, y = os.pullEvent("monitor_touch")
+        local larg, _ = mon.getSize()
         
         if ESTADO == "MENU" then
-            if y >= 6 and y <= 8 then resetarJogador(); gerarEncontro()
-            elseif y >= 10 and y <= 12 then estadoAnterior = "MENU"; mensagemLoja = ""; ESTADO = "LOJA"; atualizarTela()
-            elseif y >= 14 and y <= 16 then ESTADO = "CONFIG"; atualizarTela()
-            end
-
-        elseif ESTADO == "CONFIG" then
-            if y >= 8 and y <= 10 then
-                if x >= math.floor(larg/2)-20 and x <= math.floor(larg/2)-8 then dificuldade = 0.5; difNome = "FACIL"
-                elseif x >= math.floor(larg/2)-6 and x <= math.floor(larg/2)+6 then dificuldade = 1.0; difNome = "NORMAL"
-                elseif x >= math.floor(larg/2)+8 and x <= math.floor(larg/2)+20 then dificuldade = 1.5; difNome = "DIFICIL"
-                end
-                tocar("ui.button.click", 1)
-                atualizarTela()
-            elseif y >= 15 and y <= 17 then
-                ESTADO = "MENU"; atualizarTela()
+            local temSave = fs.exists(ARQUIVO_SAVE)
+            if temSave and y >= 7 and y <= 9 then
+                carregarJogo(); gerarEncontro()
+            elseif (not temSave and y >= 9 and y <= 11) or (temSave and y >= 11 and y <= 13) then
+                resetarJogador(); gerarEncontro()
             end
 
         elseif ESTADO == "LOJA" then
-            if y >= 6 and y <= 8 then
-                if x >= 2 and x <= 26 then
-                    if jogador.ouro >= 15 then
-                        jogador.ouro = jogador.ouro - 15; jogador.pocoes = jogador.pocoes + 1
-                        mensagemLoja = "Comprou 1 Pocao de Cura!"
-                        tocar("entity.experience_orb.pickup", 1)
-                    else mensagemLoja = "Ouro insuficiente!" end
-                elseif x >= 28 and x <= 52 then
-                    if jogador.ouro >= 30 then
-                        jogador.ouro = jogador.ouro - 30; jogador.danoExtra = jogador.danoExtra + 5
-                        mensagemLoja = "Comprou Espada! (+5 Dano)"
-                        tocar("entity.experience_orb.pickup", 1)
-                    else mensagemLoja = "Ouro insuficiente!" end
+            if y >= 7 and y <= 9 then
+                if x >= 2 and x <= 28 and jogador.ouro >= 15 then
+                    jogador.ouro = jogador.ouro - 15; jogador.pocoes = jogador.pocoes + 1
+                    mensagemLoja = "Comprou 1 Pocao!"; tocar("entity.experience_orb.pickup", 1)
+                elseif x >= 30 and jogador.ouro >= 30 then
+                    jogador.ouro = jogador.ouro - 30; jogador.pocoesMax = jogador.pocoesMax + 1
+                    mensagemLoja = "Comprou Super Pocao!"; tocar("entity.experience_orb.pickup", 1)
                 end
-                atualizarTela()
-            elseif y >= 10 and y <= 12 then
-                if x >= 2 and x <= 26 then
-                    if jogador.ouro >= 40 then
-                        jogador.ouro = jogador.ouro - 40; jogador.maxHp = jogador.maxHp + 15; jogador.hp = jogador.hp + 15
-                        mensagemLoja = "Comprou Armadura! (+15 HP)"
-                        tocar("entity.experience_orb.pickup", 1)
-                    else mensagemLoja = "Ouro insuficiente!" end
-                elseif x >= 28 and x <= 52 then
-                    if jogador.ouro >= 50 then
-                        jogador.ouro = jogador.ouro - 50; jogador.xp = jogador.xp + 25
-                        mensagemLoja = "Bebeu Elixir! (+25 XP)"
-                        tocar("entity.experience_orb.pickup", 1)
-                    else mensagemLoja = "Ouro insuficiente!" end
+            elseif y >= 11 and y <= 13 then
+                if x >= 2 and x <= 28 and jogador.ouro >= 40 then
+                    jogador.ouro = jogador.ouro - 40; jogador.danoExtra = jogador.danoExtra + 5
+                    mensagemLoja = "Comprou Espada (+5 Dano)!"; tocar("item.armor.equip_iron", 1)
+                elseif x >= 30 and jogador.ouro >= 40 then
+                    jogador.ouro = jogador.ouro - 40; jogador.defesa = jogador.defesa + 2
+                    mensagemLoja = "Comprou Escudo (+2 Def)!"; tocar("item.shield.equip", 1)
                 end
-                atualizarTela()
             elseif y >= 15 and y <= 17 then
-                ESTADO = estadoAnterior; atualizarTela()
+                if x >= 2 and x <= 28 and jogador.ouro >= 50 then
+                    jogador.ouro = jogador.ouro - 50; jogador.maxHp = jogador.maxHp + 20; jogador.hp = jogador.hp + 20
+                    mensagemLoja = "Comprou Armadura (+20 MaxHP)!"; tocar("item.armor.equip_diamond", 1)
+                elseif x >= 30 and jogador.ouro >= 60 then
+                    jogador.ouro = jogador.ouro - 60; jogador.xp = jogador.xp + 30
+                    mensagemLoja = "Bebeu Elixir (+30 XP)!"; tocar("entity.generic.drink", 1)
+                end
+            elseif y >= 19 and y <= 21 then
+                salvarJogo(); ESTADO = estadoAnterior
             end
+            atualizarTela()
 
         elseif ESTADO == "BATALHA" then
             if y == 1 and x >= larg - 6 then
-                ESTADO = "PAUSE"; tocar("ui.button.click", 1); atualizarTela()
-            elseif y >= 13 and y <= 15 then
+                salvarJogo(); ESTADO = "MENU"; atualizarTela() -- Usa o menu como Pause
+            elseif y >= 14 and y <= 16 then
                 if x >= 2 and x <= 12 then
                     processarCombate()
                 elseif x >= 14 and x <= 26 then
-                    if jogador.pocoes > 0 and jogador.hp < jogador.maxHp then
-                        jogador.pocoes = jogador.pocoes - 1
-                        local cura = 20 + (jogador.level * 5)
-                        jogador.hp = math.min(jogador.maxHp, jogador.hp + cura)
-                        mensagemLog = "Curou " .. cura .. " HP!"
-                        tocar("entity.generic.drink", 1)
-                        atualizarTela()
-                        os.sleep(0.8)
-                        turnoInimigo()
-                        atualizarTela()
+                    if jogador.pocoes > 0 or jogador.pocoesMax > 0 then
+                        local curouMax = false
+                        if jogador.pocoesMax > 0 then
+                            jogador.pocoesMax = jogador.pocoesMax - 1
+                            jogador.hp = math.min(jogador.maxHp, jogador.hp + 50)
+                            curouMax = true
+                        else
+                            jogador.pocoes = jogador.pocoes - 1
+                            jogador.hp = math.min(jogador.maxHp, jogador.hp + 25)
+                        end
+                        mensagemLog = curouMax and "Usou Super Pocao!" or "Usou Pocao Normal!"
+                        tocar("entity.generic.drink", 1); atualizarTela(); os.sleep(0.8)
+                        turnoInimigo(); atualizarTela()
                     else
-                        mensagemLog = "HP cheio ou sem pocoes!"
-                        atualizarTela()
+                        mensagemLog = "Voce nao tem pocoes!"; atualizarTela()
                     end
                 elseif x >= 28 and x <= 38 then
-                    estadoAnterior = "BATALHA"
-                    mensagemLoja = ""
-                    ESTADO = "LOJA"
-                    atualizarTela()
+                    estadoAnterior = "BATALHA"; mensagemLoja = ""; ESTADO = "LOJA"; atualizarTela()
                 elseif x >= 40 and x <= 51 then
                     if math.random(1, 2) == 1 then
-                        mensagemLog = "Fugiu com sucesso!"
-                        tocar("entity.player.breath", 1)
-                        atualizarTela(); os.sleep(1)
-                        gerarEncontro()
+                        mensagemLog = "Fugiu com sucesso!"; tocar("entity.player.breath", 1)
+                        atualizarTela(); os.sleep(1); gerarEncontro()
                     else
-                        mensagemLog = "Falha ao fugir!"
-                        tocar("entity.villager.no", 1)
-                        atualizarTela(); os.sleep(0.8)
-                        turnoInimigo(); atualizarTela()
+                        mensagemLog = "Falha ao fugir!"; tocar("entity.villager.no", 1)
+                        atualizarTela(); os.sleep(0.8); turnoInimigo(); atualizarTela()
                     end
                 end
             end
-
-        elseif ESTADO == "EVENTO" then
-            if y >= 14 and y <= 16 then gerarEncontro() end
-
-        elseif ESTADO == "PAUSE" then
-            if y >= 9 and y <= 11 then ESTADO = "BATALHA"; tocar("ui.button.click", 1); atualizarTela()
-            elseif y >= 14 and y <= 16 then ESTADO = "MENU"; tocar("ui.button.click", 1); atualizarTela()
-            end
-            
-        elseif ESTADO == "GAMEOVER" then
-            if y >= 12 and y <= 14 then ESTADO = "MENU"; atualizarTela() end
         end
     end
 end
+
+-- =======================================================
+-- 🚀 EXECUÇÃO PARALELA (MÚSICA + JOGO)
+-- =======================================================
+print("🎮 Pilgramo rodando no monitor!")
+print("Pressione 'Q' neste terminal para sair.")
+
+local function escutarSaida()
+    while rodando do
+        local _, p1 = os.pullEvent("key")
+        if p1 == keys.q then
+            rodando = false
+            mon.setBackgroundColor(colors.black); mon.clear()
+            print("Jogo encerrado.")
+        end
+    end
+end
+
+parallel.waitForAny(escutarSaida, loopJogo, loopMusica)
