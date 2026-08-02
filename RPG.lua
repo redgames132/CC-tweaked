@@ -18,7 +18,6 @@ local volume = 0.5
 local mensagemLog = "Um inimigo apareceu no seu caminho!"
 local rodando = true
 
--- Sistema de TP (Tension Points) adicionado!
 local jogador = { 
     hp = 50, maxHp = 50, tp = 0, level = 1, xp = 0, 
     ouro = 0, pocoes = 3, danoExtra = 0, defesa = 0 
@@ -42,7 +41,7 @@ local function carregarJogo()
         f.close()
         if dados then
             jogador = textutils.unserialize(dados)
-            jogador.tp = 0 -- TP sempre reseta entre sessoes
+            jogador.tp = 0 
             jogador.defesa = jogador.defesa or 0
             return true
         end
@@ -51,12 +50,26 @@ local function carregarJogo()
 end
 
 -- =======================================================
--- AUDIO E BESTIARIO (TEXTO LIMPO)
+-- AUDIO E MUSICA DE FUNDO
 -- =======================================================
 local function tocar(som, pitch)
     if speaker then pcall(function() speaker.playSound(som, volume, pitch or 1.0) end) end
 end
 
+local function loopMusica()
+    while rodando do
+        -- Toca a música padrão de jogo do Minecraft
+        if speaker and (ESTADO == "MENU" or ESTADO == "BATALHA" or ESTADO == "LOJA") then
+            pcall(function() speaker.playSound("music.game", volume * 0.5, 1.0) end)
+        end
+        -- Espera 2 minutos antes de tocar a próxima música (para não sobrepor)
+        os.sleep(120)
+    end
+end
+
+-- =======================================================
+-- BESTIARIO
+-- =======================================================
 local bestiario = {
     {nome = "Slime de Musgo", maxHp = 20, dano = 4, xp = 5, ouro = 5, cor = colors.lime, arte = {"       ", "  ___  ", " (o.o) ", " (___) "}},
     {nome = "Lobo Selvagem", maxHp = 30, dano = 6, xp = 10, ouro = 8, cor = colors.lightGray, arte = {"       ", " / \\__ ", " (o.o )", "  / /  "}},
@@ -147,7 +160,6 @@ local function desenharBatalha()
     mon.clear()
     local larg, alt = mon.getSize()
     
-    -- 1. Status do Jogador (Estilo Deltarune - Direito/Topo)
     mon.setCursorPos(1, 1)
     mon.setBackgroundColor(colors.blue)
     mon.write(string.rep(" ", larg))
@@ -160,13 +172,11 @@ local function desenharBatalha()
     mon.setBackgroundColor(colors.red)
     mon.write(" [LOJA] ")
 
-    -- 2. Área do Inimigo (Centro)
     if inimigoAtual then
         mon.setCursorPos(3, 4)
         mon.setTextColor(inimigoAtual.cor)
         mon.write(inimigoAtual.nome)
         
-        -- Barra de Vida Inimigo
         desenharBarra(3, 5, 15, inimigoAtual.hp, inimigoAtual.maxHp, colors.red)
         
         for i, linha in ipairs(inimigoAtual.arte) do
@@ -176,7 +186,6 @@ local function desenharBatalha()
         end
     end
 
-    -- 3. Painel de Status do Jogador (Meio-Direita)
     mon.setCursorPos(30, 4)
     mon.setTextColor(colors.cyan)
     mon.write("PILGRAMO")
@@ -190,14 +199,12 @@ local function desenharBatalha()
     mon.write(string.format("TP: %3d %%", jogador.tp))
     desenharBarra(30, 10, 20, jogador.tp, 100, colors.orange)
 
-    -- 4. Caixa de Dialogo
     desenharCaixa(2, 12, larg - 3, 3, colors.gray)
     mon.setCursorPos(4, 13)
     mon.setTextColor(colors.white)
     mon.setBackgroundColor(colors.gray)
     mon.write("* " .. mensagemLog)
 
-    -- 5. Botoes de Acao (Estilo Deltarune)
     mon.setBackgroundColor(colors.black)
     
     if ESTADO == "BATALHA" then
@@ -250,7 +257,7 @@ local function turnoInimigo()
         local danoReal = math.max(1, dano - jogador.defesa)
         
         jogador.hp = math.max(0, jogador.hp - danoReal)
-        ganharTP(10) -- Ganha TP ao apanhar
+        ganharTP(10)
         mensagemLog = inimigoAtual.nome .. " atacou! (-" .. danoReal .. " HP)"
         tocar("entity.player.hurt", 1)
         
@@ -326,7 +333,7 @@ local function loopJogo()
             elseif y >= 16 and y <= 18 then
                 
                 if ESTADO == "BATALHA" then
-                    if x >= 2 and x <= 14 then -- ATACAR
+                    if x >= 2 and x <= 14 then
                         tocar("entity.player.attack.sweep", 1.2)
                         ganharTP(15)
                         local dano = math.random(5 + (jogador.level*2), 10 + (jogador.level*3)) + jogador.danoExtra
@@ -335,13 +342,13 @@ local function loopJogo()
                         atualizarTela(); os.sleep(1)
                         if inimigoAtual.hp <= 0 then vitoria() else turnoInimigo(); atualizarTela() end
                     
-                    elseif x >= 16 and x <= 28 then -- MAGIA
+                    elseif x >= 16 and x <= 28 then
                         ESTADO = "SUBMENU_MAGIA"; atualizarTela()
                     
-                    elseif x >= 30 and x <= 42 then -- ITENS
+                    elseif x >= 30 and x <= 42 then
                         ESTADO = "SUBMENU_ITEM"; atualizarTela()
                     
-                    elseif x >= 44 and x <= 56 then -- POUPAR / FUGIR
+                    elseif x >= 44 and x <= 56 then
                         if inimigoAtual.hp <= (inimigoAtual.maxHp * 0.2) then
                             mensagemLog = "Voce poupou o inimigo!"
                             atualizarTela(); os.sleep(1); vitoria()
@@ -357,7 +364,7 @@ local function loopJogo()
                     end
                 
                 elseif ESTADO == "SUBMENU_MAGIA" then
-                    if x >= 2 and x <= 22 then -- CURA
+                    if x >= 2 and x <= 22 then
                         if jogador.tp >= 40 then
                             jogador.tp = jogador.tp - 40
                             jogador.hp = math.min(jogador.maxHp, jogador.hp + 40)
@@ -366,7 +373,7 @@ local function loopJogo()
                             ESTADO = "BATALHA"; atualizarTela(); os.sleep(1)
                             turnoInimigo(); atualizarTela()
                         else mensagemLog = "TP Insuficiente para Cura!"; atualizarTela() end
-                    elseif x >= 24 and x <= 44 then -- RAIO
+                    elseif x >= 24 and x <= 44 then
                         if jogador.tp >= 50 then
                             jogador.tp = jogador.tp - 50
                             local dano = 30 + (jogador.level * 5)
@@ -376,12 +383,12 @@ local function loopJogo()
                             ESTADO = "BATALHA"; atualizarTela(); os.sleep(1)
                             if inimigoAtual.hp <= 0 then vitoria() else turnoInimigo(); atualizarTela() end
                         else mensagemLog = "TP Insuficiente para Raio!"; atualizarTela() end
-                    elseif x >= 46 then -- VOLTAR
+                    elseif x >= 46 then
                         ESTADO = "BATALHA"; atualizarTela()
                     end
                 
                 elseif ESTADO == "SUBMENU_ITEM" then
-                    if x >= 2 and x <= 26 then -- POCAO
+                    if x >= 2 and x <= 26 then
                         if jogador.pocoes > 0 then
                             jogador.pocoes = jogador.pocoes - 1
                             jogador.hp = math.min(jogador.maxHp, jogador.hp + 25)
@@ -390,7 +397,7 @@ local function loopJogo()
                             ESTADO = "BATALHA"; atualizarTela(); os.sleep(1)
                             turnoInimigo(); atualizarTela()
                         else mensagemLog = "Voce nao tem pocoes!"; atualizarTela() end
-                    elseif x >= 28 then -- VOLTAR
+                    elseif x >= 28 then
                         ESTADO = "BATALHA"; atualizarTela()
                     end
                 end
@@ -410,4 +417,18 @@ local function escutarSaida()
     end
 end
 
-parallel.waitForAny(escutarSaida, loopJogo)
+-- Caçador de Bugs: Executa o jogo protegido contra fechamentos súbitos
+local sucesso, erro = pcall(function()
+    parallel.waitForAny(escutarSaida, loopJogo, loopMusica)
+end)
+
+if not sucesso then
+    term.clear()
+    term.setCursorPos(1,1)
+    print("=====================================")
+    print(" ⚠️ O JOGO ENCONTROU UM ERRO FATAL!  ")
+    print("=====================================")
+    print("\nO erro aconteceu na seguinte linha:")
+    print(erro)
+    print("\nPor favor, copie essa mensagem!")
+end
