@@ -70,27 +70,27 @@ end
 tocar("entity.player.levelup", 2.0)
 
 -- =======================================================
--- BESTIARIO, CHEFES E EVENTOS
+-- BESTIARIO, CHEFES E EVENTOS (MAIS OURO!)
 -- =======================================================
 local bestiario = {
-    {nome = "Slime de Musgo", maxHp = 18, dano = 4, xp = 6, ouro = 8, cor = colors.lime, arte = {"       ", "  ___  ", " (o.o) ", " (___) "}},
-    {nome = "Lobo Selvagem", maxHp = 30, dano = 6, xp = 10, ouro = 12, cor = colors.lightGray, arte = {"       ", " / \\__ ", " (o.o )", "  / /  "}},
-    {nome = "Goblin Ladrao", maxHp = 45, dano = 10, xp = 16, ouro = 20, cor = colors.green, arte = {"  ^ ^  ", " (O.O) ", " / | \\ ", "  / \\  "}},
-    {nome = "Esqueleto Negro", maxHp = 70, dano = 14, xp = 25, ouro = 28, cor = colors.white, arte = {"  .-.  ", " (o o) ", "  |O|  ", " /| |\\ "}},
-    {nome = "Cavaleiro Caido", maxHp = 110, dano = 18, xp = 40, ouro = 45, cor = colors.gray, arte = {"  _|_  ", " [o o] ", " /[|]\\ ", "  / \\  "}}
+    {nome = "Slime de Musgo", maxHp = 18, dano = 4, xp = 6, ouro = 15, cor = colors.lime, arte = {"       ", "  ___  ", " (o.o) ", " (___) "}},
+    {nome = "Lobo Selvagem", maxHp = 30, dano = 6, xp = 10, ouro = 25, cor = colors.lightGray, arte = {"       ", " / \\__ ", " (o.o )", "  / /  "}},
+    {nome = "Goblin Ladrao", maxHp = 45, dano = 10, xp = 16, ouro = 40, cor = colors.green, arte = {"  ^ ^  ", " (O.O) ", " / | \\ ", "  / \\  "}},
+    {nome = "Esqueleto Negro", maxHp = 70, dano = 14, xp = 25, ouro = 60, cor = colors.white, arte = {"  .-.  ", " (o o) ", "  |O|  ", " /| |\\ "}},
+    {nome = "Cavaleiro Caido", maxHp = 110, dano = 18, xp = 40, ouro = 80, cor = colors.gray, arte = {"  _|_  ", " [o o] ", " /[|]\\ ", "  / \\  "}}
 }
 
 local chefes = {
-    [1] = {nome = "REI SLIME", maxHp = 180, dano = 18, xp = 80, ouro = 100, cor = colors.lime, arte = {"   _^_   ", "  /   \\  ", " | O_O | ", "  \\___/  "}},
-    [2] = {nome = "LORDE VAMPIRO", maxHp = 350, dano = 28, xp = 200, ouro = 200, cor = colors.red, arte = {" \\_v_v_/ ", "  (o o)  ", "  /| |\\  ", "  /   \\  "}},
-    [3] = {nome = "GOLEM OBSIDIANA", maxHp = 550, dano = 38, xp = 400, ouro = 350, cor = colors.gray, arte = {"  [___]  ", "  [O_O]  ", " /[| |]\\ ", "  /   \\  "}},
-    [4] = {nome = "REINADO FANTASMA", maxHp = 800, dano = 48, xp = 700, ouro = 500, cor = colors.cyan, arte = {"  /~~~\\  ", " ( o_o ) ", " /|   |\\ ", "  \\___/  "}},
-    [5] = {nome = "DRAGAO DO FIM", maxHp = 1200, dano = 60, xp = 1200, ouro = 1000, cor = colors.purple, arte = {" \\ ||| / ", "  (O_O)  ", " /|   |\\ ", "  |___|  "}}
+    [1] = {nome = "REI SLIME", maxHp = 180, dano = 18, xp = 80, ouro = 150, cor = colors.lime, arte = {"   _^_   ", "  /   \\  ", " | O_O | ", "  \\___/  "}},
+    [2] = {nome = "LORDE VAMPIRO", maxHp = 350, dano = 28, xp = 200, ouro = 300, cor = colors.red, arte = {" \\_v_v_/ ", "  (o o)  ", "  /| |\\  ", "  /   \\  "}},
+    [3] = {nome = "GOLEM OBSIDIANA", maxHp = 550, dano = 38, xp = 400, ouro = 500, cor = colors.gray, arte = {"  [___]  ", "  [O_O]  ", " /[| |]\\ ", "  /   \\  "}},
+    [4] = {nome = "REINADO FANTASMA", maxHp = 800, dano = 48, xp = 700, ouro = 750, cor = colors.cyan, arte = {"  /~~~\\  ", " ( o_o ) ", " /|   |\\ ", "  \\___/  "}},
+    [5] = {nome = "DRAGAO DO FIM", maxHp = 1200, dano = 60, xp = 1200, ouro = 1500, cor = colors.purple, arte = {" \\ ||| / ", "  (O_O)  ", " /|   |\\ ", "  |___|  "}}
 }
 
 local listaEventos = {
     {nome = "Fonte Sagrada", desc = "Voce bebeu da agua cristalina e recuperou toda sua vida!", cor = colors.cyan, acao = function() jogador.hp = jogador.maxHp; tocar("entity.player.levelup", 0.8) end},
-    {nome = "Bau de Tesouro", desc = "Voce encontrou um bau antigo no caminho com moedas de ouro!", cor = colors.yellow, acao = function() jogador.ouro = jogador.ouro + 40; tocar("entity.experience_orb.pickup", 1.2) end},
+    {nome = "Bau de Tesouro", desc = "Voce encontrou um bau antigo no caminho com moedas de ouro!", cor = colors.yellow, acao = function() jogador.ouro = jogador.ouro + 80; tocar("entity.experience_orb.pickup", 1.2) end},
     {nome = "Acampamento Seguro", desc = "Voce descansou na fogueira, recuperou vida e ganhou uma pocao!", cor = colors.lime, acao = function() jogador.hp = math.min(jogador.maxHp, jogador.hp + 30); jogador.pocoes = jogador.pocoes + 1; tocar("entity.generic.drink", 1) end},
     {nome = "Estatua Antiga", desc = "Sua oracao na estatua lhe concedeu +5 de Dano Permanente!", cor = colors.magenta, acao = function() jogador.danoExtra = jogador.danoExtra + 5; tocar("block.amethyst_block.chime", 1) end},
     {nome = "Fada da Floresta", desc = "A fada abencoou seu corpo com +15 de Vida Maxima!", cor = colors.pink or colors.magenta, acao = function() jogador.maxHp = jogador.maxHp + 15; jogador.hp = jogador.hp + 15; tocar("entity.player.levelup", 1.2) end},
@@ -188,7 +188,6 @@ local function desenharEvento()
     if eventoAtual then
         centralizar(6, eventoAtual.nome, eventoAtual.cor, colors.black)
         
-        -- Quebra a mensagem do evento para caber na tela
         desenharCaixa(4, 8, larg - 8, 4, colors.gray)
         mon.setCursorPos(6, 9)
         mon.setTextColor(colors.white)
@@ -206,12 +205,13 @@ local function desenharLoja()
     centralizar(1, "--- MERCADOR DA ZONA " .. jogador.zona .. " ---", colors.yellow, colors.black)
     centralizar(3, "Ouro: " .. jogador.ouro .. " | Defesa: " .. jogador.defesa .. " | Dano Extra: +" .. jogador.danoExtra, colors.lime, colors.black)
     
-    desenharBotao(2, 5, 26, "POCAO (+25HP) - 15G", colors.gray, colors.white)
-    desenharBotao(30, 5, 26, "SUPER POCAO (+50HP) - 30G", colors.gray, colors.white)
-    desenharBotao(2, 9, 26, "ESPADA (+5 Dano) - 40G", colors.gray, colors.white)
-    desenharBotao(30, 9, 26, "ESCUDO (+2 Def) - 40G", colors.gray, colors.white)
-    desenharBotao(2, 13, 26, "ARMADURA (+20 HP) - 50G", colors.gray, colors.white)
-    desenharBotao(30, 13, 26, "ANEL MAGIA (+10 Mag) - 60G", colors.gray, colors.white)
+    -- Preços Atualizados (Mais Barato)
+    desenharBotao(2, 5, 26, "POCAO (+25HP) - 10G", colors.gray, colors.white)
+    desenharBotao(30, 5, 26, "SUPER POCAO (+50HP) - 25G", colors.gray, colors.white)
+    desenharBotao(2, 9, 26, "ESPADA (+5 Dano) - 35G", colors.gray, colors.white)
+    desenharBotao(30, 9, 26, "ESCUDO (+2 Def) - 35G", colors.gray, colors.white)
+    desenharBotao(2, 13, 26, "ARMADURA (+20 HP) - 45G", colors.gray, colors.white)
+    desenharBotao(30, 13, 26, "ANEL MAGIA (+10 Mag) - 55G", colors.gray, colors.white)
     
     desenharBotao(math.floor(larg/2) - 10, 17, 20, "VOLTAR AO MAPA", colors.blue, colors.white)
 end
@@ -280,7 +280,6 @@ local function ganharTP(valor) jogador.tp = math.min(100, jogador.tp + valor) en
 local function processarAvanco()
     salvarJogo()
     
-    -- Se for o Nodo 5, E SEMPRE O CHEFE DA ZONA!
     if jogador.nodo == 5 then
         local bossTemplate = chefes[jogador.zona] or chefes[5]
         local multZ = 1.0 + ((jogador.zona - 1) * 0.20)
@@ -296,7 +295,6 @@ local function processarAvanco()
         ESTADO = "BATALHA"
         
     else
-        -- Nodos 1 a 4: 35% de chance de EVENTO, 65% de BATALHA
         if math.random(1, 100) <= 35 then
             eventoAtual = listaEventos[math.random(1, #listaEventos)]
             eventoAtual.acao()
@@ -413,22 +411,22 @@ local function loopJogo()
 
         elseif ESTADO == "LOJA" then
             if y >= 5 and y <= 7 then
-                if x >= 2 and x <= 28 and jogador.ouro >= 15 then
-                    jogador.ouro = jogador.ouro - 15; jogador.pocoes = jogador.pocoes + 1; tocar("entity.experience_orb.pickup", 1)
-                elseif x >= 30 and jogador.ouro >= 30 then
-                    jogador.ouro = jogador.ouro - 30; jogador.pocoesMax = jogador.pocoesMax + 1; tocar("entity.experience_orb.pickup", 1)
+                if x >= 2 and x <= 28 and jogador.ouro >= 10 then
+                    jogador.ouro = jogador.ouro - 10; jogador.pocoes = jogador.pocoes + 1; tocar("entity.experience_orb.pickup", 1)
+                elseif x >= 30 and jogador.ouro >= 25 then
+                    jogador.ouro = jogador.ouro - 25; jogador.pocoesMax = jogador.pocoesMax + 1; tocar("entity.experience_orb.pickup", 1)
                 end
             elseif y >= 9 and y <= 11 then
-                if x >= 2 and x <= 28 and jogador.ouro >= 40 then
-                    jogador.ouro = jogador.ouro - 40; jogador.danoExtra = jogador.danoExtra + 5; tocar("item.armor.equip_iron", 1)
-                elseif x >= 30 and jogador.ouro >= 40 then
-                    jogador.ouro = jogador.ouro - 40; jogador.defesa = jogador.defesa + 2; tocar("item.shield.equip", 1)
+                if x >= 2 and x <= 28 and jogador.ouro >= 35 then
+                    jogador.ouro = jogador.ouro - 35; jogador.danoExtra = jogador.danoExtra + 5; tocar("item.armor.equip_iron", 1)
+                elseif x >= 30 and jogador.ouro >= 35 then
+                    jogador.ouro = jogador.ouro - 35; jogador.defesa = jogador.defesa + 2; tocar("item.shield.equip", 1)
                 end
             elseif y >= 13 and y <= 15 then
-                if x >= 2 and x <= 28 and jogador.ouro >= 50 then
-                    jogador.ouro = jogador.ouro - 50; jogador.maxHp = jogador.maxHp + 20; jogador.hp = jogador.hp + 20; tocar("item.armor.equip_diamond", 1)
-                elseif x >= 30 and jogador.ouro >= 60 then
-                    jogador.ouro = jogador.ouro - 60; jogador.magiaExtra = jogador.magiaExtra + 10; tocar("block.amethyst_block.chime", 1)
+                if x >= 2 and x <= 28 and jogador.ouro >= 45 then
+                    jogador.ouro = jogador.ouro - 45; jogador.maxHp = jogador.maxHp + 20; jogador.hp = jogador.hp + 20; tocar("item.armor.equip_diamond", 1)
+                elseif x >= 30 and jogador.ouro >= 55 then
+                    jogador.ouro = jogador.ouro - 55; jogador.magiaExtra = jogador.magiaExtra + 10; tocar("block.amethyst_block.chime", 1)
                 end
             elseif y >= 17 and y <= 19 then
                 salvarJogo(); ESTADO = "MAPA"; atualizarTela()
@@ -467,7 +465,7 @@ local function loopJogo()
                             mensagemLog = "Voce nao pode fugir de um CHEFE!"
                             tocar("entity.villager.no", 1); atualizarTela(); os.sleep(1); turnoInimigo(); atualizarTela()
                         else
-                            if math.random(1, 100) <= 75 then -- 75% chance de fuga
+                            if math.random(1, 100) <= 75 then
                                 mensagemLog = "Fugiu com sucesso! Voltando ao mapa..."
                                 atualizarTela(); os.sleep(1); ESTADO = "MAPA"; atualizarTela()
                             else
