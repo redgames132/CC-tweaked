@@ -5,7 +5,7 @@ local MEU_NICK = "SEU_NOME_AQUI" -- Ex: "Steve", "Notch"
 local RAIO_BUSCA = 100 -- Distância máxima para procurar (em blocos)
 
 -- Busca o Player Detector conectado no computador de bolso
-local radar = peripheral.find("playerDetector")
+local radar = peripheral.wrap("back")
 
 if not radar then
     term.clear()
