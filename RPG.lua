@@ -58,12 +58,17 @@ end
 
 local function loopMusica()
     while rodando do
-        -- Toca a música padrão de jogo do Minecraft
+        -- Toca apenas se estiver nas telas principais
         if speaker and (ESTADO == "MENU" or ESTADO == "BATALHA" or ESTADO == "LOJA") then
-            pcall(function() speaker.playSound("music.game", volume * 0.5, 1.0) end)
+            -- Usamos um disco de música (ex: 'cat', 'blocks', 'chirp', 'stal', 'pigstep')
+            -- Eles são muito mais confiáveis para tocar no Speaker!
+            pcall(function() 
+                speaker.playSound("minecraft:music_disc.cat", volume, 1.0) 
+            end)
         end
-        -- Espera 2 minutos antes de tocar a próxima música (para não sobrepor)
-        os.sleep(120)
+        -- O disco "cat" dura uns 3 minutos (180 segundos). 
+        -- Depois disso, o loop reinicia e toca de novo!
+        os.sleep(185)
     end
 end
 
