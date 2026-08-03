@@ -1,5 +1,5 @@
 -- =======================================================
--- AETHERIA 5.0 - CONFIGURAÇÕES, MULTI-SAVES E MÚSICAS
+-- AETHERIA 5.1 - UI DINÂMICA (PERFEITA PARA MONITOR 6X3)
 -- =======================================================
 local mon = peripheral.find("monitor")
 local listaSpeakers = {peripheral.find("speaker")}
@@ -20,12 +20,11 @@ mon.setPaletteColor(colors.red, 0xe05656)        -- Botoes / Fogo
 mon.setPaletteColor(colors.cyan, 0x47e8cd)       -- Cristais Magicos
 mon.setPaletteColor(colors.white, 0xffffff)      -- Esferas de Captura
 
-local ESTADO = "MENU" -- MENU, SAVES, ESCOLHA, MAPA, BATALHA, CONFIG
+local ESTADO = "MENU"
 local rodando = true
 local volume = 1.0
 local mensagemLog = "Bem-vindo a Aetheria!"
 
--- CONFIGURACOES GLOBAIS
 local config = { musica = true, trilha = 1 }
 
 local jogador = { 
@@ -51,7 +50,7 @@ local chefes = {
 }
 
 -- =======================================================
--- SISTEMA DE MULTI-SAVES (AUTO-NOMEADOS)
+-- SISTEMA DE SAVES
 -- =======================================================
 local function salvarJogo()
     local f = fs.open("aetheria_slot" .. jogador.slotAtivo .. ".json", "w")
@@ -85,21 +84,19 @@ local function carregarJogo(slot)
 end
 
 -- =======================================================
--- MOTOR DE AUDIO NATIVO & TRILHAS SONORAS
+-- AUDIO 8-BIT
 -- =======================================================
 local function tocar(instrumento, pitch)
     if speakerSFX then pcall(function() speakerSFX.playNote(instrumento, volume, pitch) end) end
 end
 
 local trilhas = {
-    -- Faixa 1: Tema de Aetheria (Exploração Heróica)
     { nome = "Tema Principal", notas = {
         {12,0.2},{16,0.2},{19,0.2},{16,0.2},{12,0.2},{16,0.2},{19,0.4},
         {14,0.2},{17,0.2},{21,0.2},{17,0.2},{14,0.2},{17,0.2},{21,0.4},
         {10,0.2},{14,0.2},{17,0.2},{14,0.2},{10,0.2},{14,0.2},{17,0.4},
         {12,0.2},{16,0.2},{19,0.2},{24,0.2},{19,0.2},{16,0.2},{12,0.5}
     }},
-    -- Faixa 2: Flower Man (Saltitante e Misterioso)
     { nome = "Flower Man", notas = {
         {12,0.2},{12,0.2},{19,0.4},{21,0.2},{21,0.2},{19,0.4},
         {17,0.2},{17,0.2},{16,0.4},{14,0.2},{14,0.2},{12,0.6},
@@ -111,11 +108,7 @@ local function loopMusica()
     local idx = 1
     local ultimaTrilha = config.trilha
     while rodando do
-        -- Reseta o indice se a trilha mudou
-        if ultimaTrilha ~= config.trilha then
-            idx = 1
-            ultimaTrilha = config.trilha
-        end
+        if ultimaTrilha ~= config.trilha then idx = 1; ultimaTrilha = config.trilha end
         
         if config.musica and speakerBGM and (ESTADO == "MAPA" or ESTADO == "BATALHA" or ESTADO == "CONFIG") then
             local faixa = trilhas[config.trilha].notas
@@ -125,14 +118,14 @@ local function loopMusica()
             pcall(function() speakerBGM.playNote("harp", volume * 0.5, nota[1]) end)
             idx = idx + 1; os.sleep(nota[2])
         else
-            os.sleep(0.5) -- Espera para não travar o loop quando estiver mutado
+            os.sleep(0.5)
         end
     end
 end
 tocar("chime", 12)
 
 -- =======================================================
--- GERADOR DE BIOMAS E ESTRUTURAS
+-- GERADOR DE BIOMAS
 -- =======================================================
 local function getTile(wx, wy)
     if wx >= -1 and wx <= 1 and wy >= -1 and wy <= 1 then return {bg=colors.yellow, fg=colors.white, char="*", type="spawn"} end
@@ -177,23 +170,23 @@ local function desenharBotao(x, y, larg, alt, texto, corFundo, corTexto)
 end
 
 -- =======================================================
--- RENDERIZADOR DAS TELAS
+-- RENDERIZADOR (ADAPTADO PARA 6X3)
 -- =======================================================
 local function desenharMenu()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
     centralizar(1, larg, 4, "A E T H E R I A", colors.yellow, colors.black)
-    desenharBotao(math.floor(larg/2)-10, 10, 20, 3, "JOGAR", colors.lime, colors.black)
+    desenharBotao(math.floor(larg/2)-10, 8, 20, 2, "JOGAR", colors.lime, colors.black)
 end
 
 local function desenharSaves()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
-    centralizar(1, larg, 3, "SELECIONE UM ARQUIVO DE JOGO", colors.cyan, colors.black)
+    centralizar(1, larg, 2, "SELECIONE UM ARQUIVO DE JOGO", colors.cyan, colors.black)
     
-    desenharBotao(math.floor(larg/2)-15, 6, 30, 3, lerSaveInfo(1), colors.gray, colors.white)
-    desenharBotao(math.floor(larg/2)-15, 11, 30, 3, lerSaveInfo(2), colors.gray, colors.white)
-    desenharBotao(math.floor(larg/2)-15, 16, 30, 3, lerSaveInfo(3), colors.gray, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 5, 30, 2, lerSaveInfo(1), colors.gray, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 8, 30, 2, lerSaveInfo(2), colors.gray, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 11, 30, 2, lerSaveInfo(3), colors.gray, colors.white)
 end
 
 local function desenharEscolha()
@@ -201,24 +194,24 @@ local function desenharEscolha()
     local larg, alt = mon.getSize()
     centralizar(1, larg, 3, "ESCOLHA SEU AETHER INICIAL", colors.white, colors.black)
     
-    desenharBotao(math.floor(larg/2)-25, 8, 14, 3, "IGNIS (FOGO)", colors.red, colors.white)
-    desenharBotao(math.floor(larg/2)-7, 8, 14, 3, "AQUA (AGUA)", colors.blue, colors.white)
-    desenharBotao(math.floor(larg/2)+11, 8, 15, 3, "FLORA (PLANTA)", colors.green, colors.white)
+    desenharBotao(math.floor(larg/2)-25, 8, 14, 2, "IGNIS (FOGO)", colors.red, colors.white)
+    desenharBotao(math.floor(larg/2)-7, 8, 14, 2, "AQUA (AGUA)", colors.blue, colors.white)
+    desenharBotao(math.floor(larg/2)+11, 8, 15, 2, "FLORA (PLANTA)", colors.green, colors.white)
 end
 
 local function desenharConfig()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
-    centralizar(1, larg, 3, "--- MENU DE CONFIGURACOES ---", colors.cyan, colors.black)
+    centralizar(1, larg, 2, "--- MENU DE CONFIGURACOES ---", colors.cyan, colors.black)
     
     local txtMusica = config.musica and "MUSICA: [ LIGADA ]" or "MUSICA: [ MUTADA ]"
-    desenharBotao(math.floor(larg/2)-15, 6, 30, 3, txtMusica, colors.gray, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 5, 30, 2, txtMusica, colors.gray, colors.white)
     
     local txtTrilha = "TRILHA: " .. trilhas[config.trilha].nome
-    desenharBotao(math.floor(larg/2)-15, 10, 30, 3, txtTrilha, colors.gray, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 8, 30, 2, txtTrilha, colors.gray, colors.white)
     
-    desenharBotao(math.floor(larg/2)-15, 14, 30, 3, "TROCAR DE SAVE", colors.red, colors.white)
-    desenharBotao(math.floor(larg/2)-15, 18, 30, 3, "VOLTAR AO MAPA", colors.blue, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 11, 30, 2, "TROCAR DE SAVE", colors.red, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 14, 30, 2, "VOLTAR AO MAPA", colors.blue, colors.white)
 end
 
 local function desenharMapa()
@@ -249,28 +242,29 @@ local function desenharMapa()
     mon.setBackgroundColor(colors.gray)
     for i=1, alt do mon.setCursorPos(painelX, i); mon.write(" ") end
     
+    -- Ajustado para caber em monitores de altura 19 (6x3)
     centralizar(painelX+1, 23, 1, "A E T H E R I A", colors.yellow, colors.black)
-    centralizar(painelX+1, 23, 3, jogador.monstro .. " ("..jogador.tipo..")", colors.cyan, colors.black)
-    centralizar(painelX+1, 23, 4, string.format("Lvl:%d | XP:%d", jogador.nivel, jogador.xp), colors.white, colors.black)
+    centralizar(painelX+1, 23, 2, jogador.monstro .. " ("..jogador.tipo..")", colors.cyan, colors.black)
+    centralizar(painelX+1, 23, 3, string.format("Lvl:%d | XP:%d", jogador.nivel, jogador.xp), colors.white, colors.black)
     
-    mon.setCursorPos(painelX+2, 6); mon.setBackgroundColor(colors.gray); mon.write(string.rep(" ", 20))
+    mon.setCursorPos(painelX+2, 5); mon.setBackgroundColor(colors.gray); mon.write(string.rep(" ", 20))
     local hpFill = math.floor((jogador.hp / jogador.maxHp) * 20)
     if hpFill > 0 then
-        mon.setCursorPos(painelX+2, 6); mon.setBackgroundColor(colors.lime); mon.write(string.rep(" ", hpFill))
+        mon.setCursorPos(painelX+2, 5); mon.setBackgroundColor(colors.lime); mon.write(string.rep(" ", hpFill))
     end
     mon.setBackgroundColor(colors.black)
     
-    centralizar(painelX+1, 23, 8, "Ouro: " .. jogador.ouro, colors.yellow, colors.black)
-    centralizar(painelX+1, 23, 9, "Esferas: " .. jogador.esferas, colors.white, colors.black)
-    centralizar(painelX+1, 23, 11, mensagemLog, colors.lime, colors.black)
+    centralizar(painelX+1, 23, 7, "Ouro: "..jogador.ouro.." | Esf: "..jogador.esferas, colors.yellow, colors.black)
+    centralizar(painelX+1, 23, 9, mensagemLog, colors.lime, colors.black)
     
-    desenharBotao(painelX + 9, 13, 6, 2, "/\\", colors.gray, colors.white)
-    desenharBotao(painelX + 2, 16, 6, 2, "<", colors.gray, colors.white)
-    desenharBotao(painelX + 16, 16, 6, 2, ">", colors.gray, colors.white)
-    desenharBotao(painelX + 9, 19, 6, 2, "\\/", colors.gray, colors.white)
+    -- D-Pad e Config Dinamicos baseados na altura total
+    local by = alt - 8
+    desenharBotao(painelX + 9, by, 6, 2, "/\\", colors.gray, colors.white)
+    desenharBotao(painelX + 2, by+2, 6, 2, "<", colors.gray, colors.white)
+    desenharBotao(painelX + 16, by+2, 6, 2, ">", colors.gray, colors.white)
+    desenharBotao(painelX + 9, by+4, 6, 2, "\\/", colors.gray, colors.white)
     
-    -- NOVO: Botao de Configuracoes no canto inferior direito
-    desenharBotao(painelX + 2, 22, 20, 2, "CONFIGURACOES", colors.blue, colors.white)
+    desenharBotao(painelX + 2, alt - 1, 20, 2, "CONFIG", colors.blue, colors.white)
 end
 
 local function desenharBatalha()
@@ -281,17 +275,17 @@ local function desenharBatalha()
     centralizar(1, larg, 1, "BATALHA: " .. jogador.monstro .. " VS " .. inimigoAtual.nome, colors.black, colors.yellow)
 
     if inimigoAtual then
-        centralizar(1, larg, 4, inimigoAtual.nome .. " (" .. inimigoAtual.tipo .. ")", inimigoAtual.cor, colors.black)
-        centralizar(1, larg, 5, "HP: " .. inimigoAtual.hp .. " / " .. inimigoAtual.maxHp, colors.red, colors.black)
-        for i, linha in ipairs(inimigoAtual.arte) do centralizar(1, larg, 6 + i, linha, inimigoAtual.cor, colors.black) end
+        centralizar(1, larg, 3, inimigoAtual.nome .. " (" .. inimigoAtual.tipo .. ")", inimigoAtual.cor, colors.black)
+        centralizar(1, larg, 4, "HP: " .. inimigoAtual.hp .. " / " .. inimigoAtual.maxHp, colors.red, colors.black)
+        for i, linha in ipairs(inimigoAtual.arte) do centralizar(1, larg, 5 + i, linha, inimigoAtual.cor, colors.black) end
     end
 
-    mon.setCursorPos(4, alt - 6); mon.setTextColor(colors.cyan); mon.setBackgroundColor(colors.black); mon.write(jogador.monstro .. " ("..jogador.tipo..")")
-    mon.setCursorPos(4, alt - 5); mon.setTextColor(colors.white); mon.write(string.format("HP: %d / %d", jogador.hp, jogador.maxHp))
+    mon.setCursorPos(4, alt - 5); mon.setTextColor(colors.cyan); mon.setBackgroundColor(colors.black); mon.write(jogador.monstro .. " ("..jogador.tipo..")")
+    mon.setCursorPos(4, alt - 4); mon.setTextColor(colors.white); mon.write(string.format("HP: %d / %d", jogador.hp, jogador.maxHp))
     
     mon.setBackgroundColor(colors.gray)
-    for i=0, 2 do mon.setCursorPos(24, alt-6+i); mon.write(string.rep(" ", larg-25)) end
-    mon.setCursorPos(26, alt-5); mon.setTextColor(colors.white); mon.write(mensagemLog)
+    for i=0, 1 do mon.setCursorPos(24, alt-5+i); mon.write(string.rep(" ", larg-25)) end
+    mon.setCursorPos(26, alt-4); mon.setTextColor(colors.white); mon.write(mensagemLog)
 
     mon.setBackgroundColor(colors.black)
     if ESTADO == "BATALHA" then
@@ -415,25 +409,26 @@ end
 -- =======================================================
 local function loopJogo()
     atualizarTela()
+    
     while rodando do
         local ev, _, x, y = os.pullEvent("monitor_touch")
         local larg, alt = mon.getSize()
         local painelX = (larg - 24) + 1
         
         if ESTADO == "MENU" then
-            if y >= 10 and y <= 12 then ESTADO = "SAVES"; atualizarTela() end
+            if y >= 8 and y <= 9 then ESTADO = "SAVES"; atualizarTela() end
             
         elseif ESTADO == "SAVES" then
-            if y >= 6 and y <= 8 then
+            if y >= 5 and y <= 6 then
                 if carregarJogo(1) then ESTADO = "MAPA" else jogador.slotAtivo=1; ESTADO = "ESCOLHA" end; atualizarTela()
-            elseif y >= 11 and y <= 13 then
+            elseif y >= 8 and y <= 9 then
                 if carregarJogo(2) then ESTADO = "MAPA" else jogador.slotAtivo=2; ESTADO = "ESCOLHA" end; atualizarTela()
-            elseif y >= 16 and y <= 18 then
+            elseif y >= 11 and y <= 12 then
                 if carregarJogo(3) then ESTADO = "MAPA" else jogador.slotAtivo=3; ESTADO = "ESCOLHA" end; atualizarTela()
             end
             
         elseif ESTADO == "ESCOLHA" then
-            if y >= 8 and y <= 10 then
+            if y >= 8 and y <= 9 then
                 jogador = {x=0, y=0, nivel=1, xp=0, hp=100, maxHp=100, ouro=0, pocoes=5, esferas=3, coletados={}, slotAtivo=jogador.slotAtivo}
                 if x >= math.floor(larg/2)-25 and x <= math.floor(larg/2)-11 then jogador.monstro="Ignis"; jogador.tipo="Fogo"
                 elseif x >= math.floor(larg/2)-7 and x <= math.floor(larg/2)+7 then jogador.monstro="Aqua"; jogador.tipo="Agua"
@@ -443,24 +438,24 @@ local function loopJogo()
             end
             
         elseif ESTADO == "CONFIG" then
-            if y >= 6 and y <= 8 then
+            if y >= 5 and y <= 6 then
                 config.musica = not config.musica; tocar("hat", 12); atualizarTela()
-            elseif y >= 10 and y <= 12 then
-                config.trilha = config.trilha + 1
-                if config.trilha > #trilhas then config.trilha = 1 end
+            elseif y >= 8 and y <= 9 then
+                config.trilha = config.trilha + 1; if config.trilha > #trilhas then config.trilha = 1 end
                 tocar("chime", 15); atualizarTela()
-            elseif y >= 14 and y <= 16 then
+            elseif y >= 11 and y <= 12 then
                 salvarJogo(); tocar("hat", 10); ESTADO = "SAVES"; atualizarTela()
-            elseif y >= 18 and y <= 20 then
+            elseif y >= 14 and y <= 15 then
                 tocar("hat", 10); ESTADO = "MAPA"; atualizarTela()
             end
             
         elseif ESTADO == "MAPA" then
-            if y >= 13 and y <= 14 and x >= painelX + 9 and x <= painelX + 14 then moverJogador(0, -1)
-            elseif y >= 19 and y <= 20 and x >= painelX + 9 and x <= painelX + 14 then moverJogador(0, 1)
-            elseif y >= 16 and y <= 17 and x >= painelX + 2 and x <= painelX + 7 then moverJogador(-1, 0)
-            elseif y >= 16 and y <= 17 and x >= painelX + 16 and x <= painelX + 21 then moverJogador(1, 0)
-            elseif y >= 22 and y <= 23 and x >= painelX + 2 and x <= painelX + 21 then ESTADO = "CONFIG"; atualizarTela()
+            local by = alt - 8
+            if y >= by and y <= by+1 and x >= painelX + 9 and x <= painelX + 14 then moverJogador(0, -1)
+            elseif y >= by+4 and y <= by+5 and x >= painelX + 9 and x <= painelX + 14 then moverJogador(0, 1)
+            elseif y >= by+2 and y <= by+3 and x >= painelX + 2 and x <= painelX + 7 then moverJogador(-1, 0)
+            elseif y >= by+2 and y <= by+3 and x >= painelX + 16 and x <= painelX + 21 then moverJogador(1, 0)
+            elseif y >= alt-1 and y <= alt and x >= painelX + 2 and x <= painelX + 21 then ESTADO = "CONFIG"; atualizarTela()
             end
             
         elseif ESTADO == "BATALHA" or ESTADO == "SUBMENU_ITEM" then
