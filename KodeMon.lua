@@ -1,5 +1,5 @@
 -- =======================================================
--- AETHERIA 5.2 - FIX DE TELA CORTADA (MONITORES 6X3)
+-- AETHERIA 5.3 - FLOWER MAN EXPANDIDO E GESTÃO DE SAVES
 -- =======================================================
 local mon = peripheral.find("monitor")
 local listaSpeakers = {peripheral.find("speaker")}
@@ -21,6 +21,7 @@ mon.setPaletteColor(colors.cyan, 0x47e8cd)
 mon.setPaletteColor(colors.white, 0xffffff)      
 
 local ESTADO = "MENU" 
+local modoSave = "CARREGAR" -- CARREGAR ou DELETAR
 local rodando = true
 local volume = 1.0
 local mensagemLog = "Bem-vindo a Aetheria!"
@@ -49,6 +50,9 @@ local chefes = {
     {nome="DRAGAO CELESTE", tipo="Fogo", hp=600, dano=55, xp=500, cor=colors.red, arte={" \\||||/ "," (O__O) "," /|  |\\ ","  |__|  "}}
 }
 
+-- =======================================================
+-- GERENCIADOR DE SAVES (COM DELEÇÃO)
+-- =======================================================
 local function salvarJogo()
     local f = fs.open("aetheria_slot" .. jogador.slotAtivo .. ".json", "w")
     f.write(textutils.serialize(jogador))
@@ -80,6 +84,18 @@ local function carregarJogo(slot)
     return false
 end
 
+local function deletarSave(slot)
+    local arquivo = "aetheria_slot" .. slot .. ".json"
+    if fs.exists(arquivo) then
+        fs.delete(arquivo)
+        return true
+    end
+    return false
+end
+
+-- =======================================================
+-- AUDIO 8-BIT & TRILHA FLOWER MAN COMPLETA
+-- =======================================================
 local function tocar(instrumento, pitch)
     if speakerSFX then pcall(function() speakerSFX.playNote(instrumento, volume, pitch) end) end
 end
@@ -91,10 +107,15 @@ local trilhas = {
         {10,0.2},{14,0.2},{17,0.2},{14,0.2},{10,0.2},{14,0.2},{17,0.4},
         {12,0.2},{16,0.2},{19,0.2},{24,0.2},{19,0.2},{16,0.2},{12,0.5}
     }},
-    { nome = "Flower Man", notas = {
-        {12,0.2},{12,0.2},{19,0.4},{21,0.2},{21,0.2},{19,0.4},
-        {17,0.2},{17,0.2},{16,0.4},{14,0.2},{14,0.2},{12,0.6},
-        {19,0.2},{19,0.2},{16,0.4},{14,0.2},{14,0.2},{12,0.4}
+    { nome = "Flower Man (Flowey)", notas = {
+        -- Parte A (Tema Alegre e Saltitante)
+        {12,0.15},{16,0.15},{19,0.15},{23,0.15},{24,0.30},{19,0.15},{16,0.15},{12,0.30},
+        {14,0.15},{17,0.15},{21,0.15},{23,0.15},{21,0.30},{17,0.15},{14,0.15},{10,0.30},
+        {12,0.15},{16,0.15},{19,0.15},{23,0.15},{24,0.30},{21,0.15},{19,0.15},{16,0.30},
+        {17,0.15},{19,0.15},{21,0.15},{24,0.15},{23,0.30},{19,0.15},{16,0.15},{12,0.40},
+        -- Parte B (Ponte Cômica/Misteriosa)
+        {16,0.20},{16,0.10},{19,0.20},{16,0.20},{21,0.20},{19,0.20},{16,0.20},{14,0.35},
+        {14,0.20},{14,0.10},{17,0.20},{14,0.20},{19,0.20},{17,0.20},{14,0.20},{12,0.35}
     }}
 }
 
@@ -118,6 +139,9 @@ local function loopMusica()
 end
 tocar("chime", 12)
 
+-- =======================================================
+-- GERADOR DE MAPA
+-- =======================================================
 local function getTile(wx, wy)
     if wx >= -1 and wx <= 1 and wy >= -1 and wy <= 1 then return {bg=colors.yellow, fg=colors.white, char="*", type="spawn"} end
     
@@ -157,6 +181,9 @@ local function desenharBotao(x, y, larg, alt, texto, corFundo, corTexto)
     mon.setTextColor(corTexto); mon.write(texto)
 end
 
+-- =======================================================
+-- RENDERIZADOR DE TELAS
+-- =======================================================
 local function desenharMenu()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
@@ -167,11 +194,17 @@ end
 local function desenharSaves()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
-    centralizar(1, larg, 2, "SELECIONE UM ARQUIVO DE JOGO", colors.cyan, colors.black)
+    centralizar(1, larg, 2, "GERENCIADOR DE SAVES", colors.cyan, colors.black)
     
-    desenharBotao(math.floor(larg/2)-15, 5, 30, 2, lerSaveInfo(1), colors.gray, colors.white)
-    desenharBotao(math.floor(larg/2)-15, 8, 30, 2, lerSaveInfo(2), colors.gray, colors.white)
-    desenharBotao(math.floor(larg/2)-15, 11, 30, 2, lerSaveInfo(3), colors.gray, colors.white)
+    -- Botao para alternar o modo de clicar no save
+    local corModo = (modoSave == "CARREGAR") and colors.blue or colors.red
+    desenharBotao(math.floor(larg/2)-15, 4, 30, 2, "MODO: [ " .. modoSave .. " ]", corModo, colors.white)
+    
+    desenharBotao(math.floor(larg/2)-15, 7, 30, 2, lerSaveInfo(1), colors.gray, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 10, 30, 2, lerSaveInfo(2), colors.gray, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 13, 30, 2, lerSaveInfo(3), colors.gray, colors.white)
+    
+    desenharBotao(math.floor(larg/2)-10, 16, 20, 1, "VOLTAR AO MENU", colors.gray, colors.white)
 end
 
 local function desenharEscolha()
@@ -195,7 +228,7 @@ local function desenharConfig()
     local txtTrilha = "TRILHA: " .. trilhas[config.trilha].nome
     desenharBotao(math.floor(larg/2)-15, 8, 30, 2, txtTrilha, colors.gray, colors.white)
     
-    desenharBotao(math.floor(larg/2)-15, 11, 30, 2, "TROCAR DE SAVE", colors.red, colors.white)
+    desenharBotao(math.floor(larg/2)-15, 11, 30, 2, "GERENCIAR SAVES", colors.red, colors.white)
     desenharBotao(math.floor(larg/2)-15, 14, 30, 2, "VOLTAR AO MAPA", colors.blue, colors.white)
 end
 
@@ -227,7 +260,6 @@ local function desenharMapa()
     mon.setBackgroundColor(colors.gray)
     for i=1, alt do mon.setCursorPos(painelX, i); mon.write(" ") end
     
-    -- UI COMPACTADA PARA CABER EM 6x3
     centralizar(painelX+1, 23, 1, "A E T H E R I A", colors.yellow, colors.black)
     centralizar(painelX+1, 23, 3, jogador.monstro .. " ("..jogador.tipo..")", colors.cyan, colors.black)
     centralizar(painelX+1, 23, 4, string.format("Lvl:%d | XP:%d", jogador.nivel, jogador.xp), colors.white, colors.black)
@@ -242,13 +274,11 @@ local function desenharMapa()
     centralizar(painelX+1, 23, 8, "Ouro: "..jogador.ouro.." | Esf: "..jogador.esferas, colors.yellow, colors.black)
     centralizar(painelX+1, 23, 9, mensagemLog, colors.lime, colors.black)
     
-    -- D-Pad Ajustado (Mais alto para nao cortar)
     desenharBotao(painelX + 9, 11, 6, 2, "/\\", colors.gray, colors.white)
     desenharBotao(painelX + 2, 13, 6, 2, "<", colors.gray, colors.white)
     desenharBotao(painelX + 16, 13, 6, 2, ">", colors.gray, colors.white)
     desenharBotao(painelX + 9, 15, 6, 2, "\\/", colors.gray, colors.white)
     
-    -- Botao de Configuração
     desenharBotao(painelX + 2, 18, 20, 1, "CONFIGURACOES", colors.blue, colors.white)
 end
 
@@ -295,6 +325,9 @@ local function atualizarTela()
     end
 end
 
+-- =======================================================
+-- LOGICA DE MOVIMENTO E COMBATE
+-- =======================================================
 local function moverJogador(dx, dy)
     local nx = jogador.x + dx; local ny = jogador.y + dy
     local tile = getTile(nx, ny)
@@ -384,6 +417,26 @@ local function vitoria()
     ESTADO = "MAPA"; salvarJogo(); atualizarTela()
 end
 
+-- =======================================================
+-- INPUTS E LOOP PRINCIPAL
+-- =======================================================
+local function processarAcaoSave(slot)
+    if modoSave == "CARREGAR" then
+        if carregarJogo(slot) then 
+            ESTADO = "MAPA" 
+        else 
+            jogador.slotAtivo = slot
+            ESTADO = "ESCOLHA" 
+        end
+    elseif modoSave == "DELETAR" then
+        if deletarSave(slot) then
+            tocar("bass", 3)
+            mensagemLog = "Save do Slot " .. slot .. " apagado!"
+        end
+    end
+    atualizarTela()
+end
+
 local function loopJogo()
     atualizarTela()
     while rodando do
@@ -395,12 +448,13 @@ local function loopJogo()
             if y >= 8 and y <= 9 then ESTADO = "SAVES"; atualizarTela() end
             
         elseif ESTADO == "SAVES" then
-            if y >= 5 and y <= 6 then
-                if carregarJogo(1) then ESTADO = "MAPA" else jogador.slotAtivo=1; ESTADO = "ESCOLHA" end; atualizarTela()
-            elseif y >= 8 and y <= 9 then
-                if carregarJogo(2) then ESTADO = "MAPA" else jogador.slotAtivo=2; ESTADO = "ESCOLHA" end; atualizarTela()
-            elseif y >= 11 and y <= 12 then
-                if carregarJogo(3) then ESTADO = "MAPA" else jogador.slotAtivo=3; ESTADO = "ESCOLHA" end; atualizarTela()
+            if y >= 4 and y <= 5 then
+                modoSave = (modoSave == "CARREGAR") and "DELETAR" or "CARREGAR"
+                tocar("hat", 12); atualizarTela()
+            elseif y >= 7 and y <= 8 then processarAcaoSave(1)
+            elseif y >= 10 and y <= 11 then processarAcaoSave(2)
+            elseif y >= 13 and y <= 14 then processarAcaoSave(3)
+            elseif y >= 16 and y <= 17 then ESTADO = "MENU"; atualizarTela()
             end
             
         elseif ESTADO == "ESCOLHA" then
