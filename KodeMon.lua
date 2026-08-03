@@ -1,5 +1,5 @@
 -- =======================================================
--- AETHERIA 5.3 - FLOWER MAN EXPANDIDO E GESTÃO DE SAVES
+-- AETHERIA 5.4 - FLOWER MAN AUTÊNTICO (GAMEBOY AUDIO)
 -- =======================================================
 local mon = peripheral.find("monitor")
 local listaSpeakers = {peripheral.find("speaker")}
@@ -21,12 +21,12 @@ mon.setPaletteColor(colors.cyan, 0x47e8cd)
 mon.setPaletteColor(colors.white, 0xffffff)      
 
 local ESTADO = "MENU" 
-local modoSave = "CARREGAR" -- CARREGAR ou DELETAR
+local modoSave = "CARREGAR"
 local rodando = true
 local volume = 1.0
 local mensagemLog = "Bem-vindo a Aetheria!"
 
-local config = { musica = true, trilha = 1 }
+local config = { musica = true, trilha = 2 } -- Já começa na Trilha 2 (Flowey)!
 
 local jogador = { 
     x = 0, y = 0, nivel = 1, xp = 0, hp = 100, maxHp = 100,
@@ -51,7 +51,7 @@ local chefes = {
 }
 
 -- =======================================================
--- GERENCIADOR DE SAVES (COM DELEÇÃO)
+-- GERENCIADOR DE SAVES
 -- =======================================================
 local function salvarJogo()
     local f = fs.open("aetheria_slot" .. jogador.slotAtivo .. ".json", "w")
@@ -86,36 +86,31 @@ end
 
 local function deletarSave(slot)
     local arquivo = "aetheria_slot" .. slot .. ".json"
-    if fs.exists(arquivo) then
-        fs.delete(arquivo)
-        return true
-    end
+    if fs.exists(arquivo) then fs.delete(arquivo); return true end
     return false
 end
 
 -- =======================================================
--- AUDIO 8-BIT & TRILHA FLOWER MAN COMPLETA
+-- MOTOR DE AUDIO: TRILHAS CORRIGIDAS E INSTRUMENTOS
 -- =======================================================
 local function tocar(instrumento, pitch)
     if speakerSFX then pcall(function() speakerSFX.playNote(instrumento, volume, pitch) end) end
 end
 
 local trilhas = {
-    { nome = "Tema Principal", notas = {
+    -- Faixa 1: Harpa (Acustico, suave)
+    { nome = "Tema Principal", inst = "harp", notas = {
         {12,0.2},{16,0.2},{19,0.2},{16,0.2},{12,0.2},{16,0.2},{19,0.4},
         {14,0.2},{17,0.2},{21,0.2},{17,0.2},{14,0.2},{17,0.2},{21,0.4},
         {10,0.2},{14,0.2},{17,0.2},{14,0.2},{10,0.2},{14,0.2},{17,0.4},
         {12,0.2},{16,0.2},{19,0.2},{24,0.2},{19,0.2},{16,0.2},{12,0.5}
     }},
-    { nome = "Flower Man (Flowey)", notas = {
-        -- Parte A (Tema Alegre e Saltitante)
-        {12,0.15},{16,0.15},{19,0.15},{23,0.15},{24,0.30},{19,0.15},{16,0.15},{12,0.30},
-        {14,0.15},{17,0.15},{21,0.15},{23,0.15},{21,0.30},{17,0.15},{14,0.15},{10,0.30},
-        {12,0.15},{16,0.15},{19,0.15},{23,0.15},{24,0.30},{21,0.15},{19,0.15},{16,0.30},
-        {17,0.15},{19,0.15},{21,0.15},{24,0.15},{23,0.30},{19,0.15},{16,0.15},{12,0.40},
-        -- Parte B (Ponte Cômica/Misteriosa)
-        {16,0.20},{16,0.10},{19,0.20},{16,0.20},{21,0.20},{19,0.20},{16,0.20},{14,0.35},
-        {14,0.20},{14,0.10},{17,0.20},{14,0.20},{19,0.20},{17,0.20},{14,0.20},{12,0.35}
+    -- Faixa 2: Flower Man (Instrumento "bit" do CC = Chiptune Gameboy)
+    { nome = "Flowey (Your Best Friend)", inst = "bit", notas = {
+        {6, 0.2}, {6, 0.2}, {13, 0.6}, {13, 0.2}, {11, 0.2}, {10, 0.4}, {8, 0.4},
+        {6, 0.2}, {6, 0.2}, {15, 0.6}, {13, 0.2}, {11, 0.2}, {10, 0.4}, {8, 0.4},
+        {6, 0.2}, {6, 0.2}, {13, 0.6}, {13, 0.2}, {11, 0.2}, {10, 0.4}, {8, 0.4},
+        {10, 0.2}, {11, 0.2}, {13, 0.2}, {15, 0.2}, {17, 0.4}, {18, 0.6}
     }}
 }
 
@@ -126,11 +121,14 @@ local function loopMusica()
         if ultimaTrilha ~= config.trilha then idx = 1; ultimaTrilha = config.trilha end
         
         if config.musica and speakerBGM and (ESTADO == "MAPA" or ESTADO == "BATALHA" or ESTADO == "CONFIG") then
-            local faixa = trilhas[config.trilha].notas
+            local trilhaAtual = trilhas[config.trilha]
+            local faixa = trilhaAtual.notas
+            local instrumento = trilhaAtual.inst
+            
             if idx > #faixa then idx = 1 end
             local nota = faixa[idx]
             
-            pcall(function() speakerBGM.playNote("harp", volume * 0.5, nota[1]) end)
+            pcall(function() speakerBGM.playNote(instrumento, volume * 0.5, nota[1]) end)
             idx = idx + 1; os.sleep(nota[2])
         else
             os.sleep(0.5)
@@ -196,7 +194,6 @@ local function desenharSaves()
     local larg, alt = mon.getSize()
     centralizar(1, larg, 2, "GERENCIADOR DE SAVES", colors.cyan, colors.black)
     
-    -- Botao para alternar o modo de clicar no save
     local corModo = (modoSave == "CARREGAR") and colors.blue or colors.red
     desenharBotao(math.floor(larg/2)-15, 4, 30, 2, "MODO: [ " .. modoSave .. " ]", corModo, colors.white)
     
