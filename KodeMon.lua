@@ -1,5 +1,5 @@
 -- =======================================================
--- AETHERIA 5.1 - UI DINÂMICA (PERFEITA PARA MONITOR 6X3)
+-- AETHERIA 5.2 - FIX DE TELA CORTADA (MONITORES 6X3)
 -- =======================================================
 local mon = peripheral.find("monitor")
 local listaSpeakers = {peripheral.find("speaker")}
@@ -10,17 +10,17 @@ local speakerBGM = listaSpeakers[2] or listaSpeakers[1]
 if not mon then print("[ERRO] Monitor nao encontrado!") return end
 
 -- PALETA CUSTOMIZADA
-mon.setPaletteColor(colors.lime, 0x8bbf54)       -- Grama base
-mon.setPaletteColor(colors.green, 0x5a8a32)      -- Grama Alta
-mon.setPaletteColor(colors.blue, 0x4a9cc2)       -- Agua
-mon.setPaletteColor(colors.lightBlue, 0x3d404d)  -- Mina
-mon.setPaletteColor(colors.gray, 0x737a80)       -- Montanhas
-mon.setPaletteColor(colors.yellow, 0xf2c94c)     -- UI e Ouro
-mon.setPaletteColor(colors.red, 0xe05656)        -- Botoes / Fogo
-mon.setPaletteColor(colors.cyan, 0x47e8cd)       -- Cristais Magicos
-mon.setPaletteColor(colors.white, 0xffffff)      -- Esferas de Captura
+mon.setPaletteColor(colors.lime, 0x8bbf54)       
+mon.setPaletteColor(colors.green, 0x5a8a32)      
+mon.setPaletteColor(colors.blue, 0x4a9cc2)       
+mon.setPaletteColor(colors.lightBlue, 0x3d404d)  
+mon.setPaletteColor(colors.gray, 0x737a80)       
+mon.setPaletteColor(colors.yellow, 0xf2c94c)     
+mon.setPaletteColor(colors.red, 0xe05656)        
+mon.setPaletteColor(colors.cyan, 0x47e8cd)       
+mon.setPaletteColor(colors.white, 0xffffff)      
 
-local ESTADO = "MENU"
+local ESTADO = "MENU" 
 local rodando = true
 local volume = 1.0
 local mensagemLog = "Bem-vindo a Aetheria!"
@@ -49,9 +49,6 @@ local chefes = {
     {nome="DRAGAO CELESTE", tipo="Fogo", hp=600, dano=55, xp=500, cor=colors.red, arte={" \\||||/ "," (O__O) "," /|  |\\ ","  |__|  "}}
 }
 
--- =======================================================
--- SISTEMA DE SAVES
--- =======================================================
 local function salvarJogo()
     local f = fs.open("aetheria_slot" .. jogador.slotAtivo .. ".json", "w")
     f.write(textutils.serialize(jogador))
@@ -83,9 +80,6 @@ local function carregarJogo(slot)
     return false
 end
 
--- =======================================================
--- AUDIO 8-BIT
--- =======================================================
 local function tocar(instrumento, pitch)
     if speakerSFX then pcall(function() speakerSFX.playNote(instrumento, volume, pitch) end) end
 end
@@ -124,9 +118,6 @@ local function loopMusica()
 end
 tocar("chime", 12)
 
--- =======================================================
--- GERADOR DE BIOMAS
--- =======================================================
 local function getTile(wx, wy)
     if wx >= -1 and wx <= 1 and wy >= -1 and wy <= 1 then return {bg=colors.yellow, fg=colors.white, char="*", type="spawn"} end
     
@@ -151,9 +142,6 @@ local function getTile(wx, wy)
     return {bg=colors.lime, fg=colors.green, char=".", type="grama"}
 end
 
--- =======================================================
--- UTILITARIOS DE TELA
--- =======================================================
 local function centralizar(x_start, largura, y, texto, corTexto, corFundo)
     local x = x_start + math.floor((largura - #texto) / 2)
     mon.setCursorPos(math.max(x_start, x), y)
@@ -169,9 +157,6 @@ local function desenharBotao(x, y, larg, alt, texto, corFundo, corTexto)
     mon.setTextColor(corTexto); mon.write(texto)
 end
 
--- =======================================================
--- RENDERIZADOR (ADAPTADO PARA 6X3)
--- =======================================================
 local function desenharMenu()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
@@ -202,7 +187,7 @@ end
 local function desenharConfig()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
-    centralizar(1, larg, 2, "--- MENU DE CONFIGURACOES ---", colors.cyan, colors.black)
+    centralizar(1, larg, 2, "--- CONFIGURACOES ---", colors.cyan, colors.black)
     
     local txtMusica = config.musica and "MUSICA: [ LIGADA ]" or "MUSICA: [ MUTADA ]"
     desenharBotao(math.floor(larg/2)-15, 5, 30, 2, txtMusica, colors.gray, colors.white)
@@ -242,29 +227,29 @@ local function desenharMapa()
     mon.setBackgroundColor(colors.gray)
     for i=1, alt do mon.setCursorPos(painelX, i); mon.write(" ") end
     
-    -- Ajustado para caber em monitores de altura 19 (6x3)
+    -- UI COMPACTADA PARA CABER EM 6x3
     centralizar(painelX+1, 23, 1, "A E T H E R I A", colors.yellow, colors.black)
-    centralizar(painelX+1, 23, 2, jogador.monstro .. " ("..jogador.tipo..")", colors.cyan, colors.black)
-    centralizar(painelX+1, 23, 3, string.format("Lvl:%d | XP:%d", jogador.nivel, jogador.xp), colors.white, colors.black)
+    centralizar(painelX+1, 23, 3, jogador.monstro .. " ("..jogador.tipo..")", colors.cyan, colors.black)
+    centralizar(painelX+1, 23, 4, string.format("Lvl:%d | XP:%d", jogador.nivel, jogador.xp), colors.white, colors.black)
     
-    mon.setCursorPos(painelX+2, 5); mon.setBackgroundColor(colors.gray); mon.write(string.rep(" ", 20))
+    mon.setCursorPos(painelX+2, 6); mon.setBackgroundColor(colors.gray); mon.write(string.rep(" ", 20))
     local hpFill = math.floor((jogador.hp / jogador.maxHp) * 20)
     if hpFill > 0 then
-        mon.setCursorPos(painelX+2, 5); mon.setBackgroundColor(colors.lime); mon.write(string.rep(" ", hpFill))
+        mon.setCursorPos(painelX+2, 6); mon.setBackgroundColor(colors.lime); mon.write(string.rep(" ", hpFill))
     end
     mon.setBackgroundColor(colors.black)
     
-    centralizar(painelX+1, 23, 7, "Ouro: "..jogador.ouro.." | Esf: "..jogador.esferas, colors.yellow, colors.black)
+    centralizar(painelX+1, 23, 8, "Ouro: "..jogador.ouro.." | Esf: "..jogador.esferas, colors.yellow, colors.black)
     centralizar(painelX+1, 23, 9, mensagemLog, colors.lime, colors.black)
     
-    -- D-Pad e Config Dinamicos baseados na altura total
-    local by = alt - 8
-    desenharBotao(painelX + 9, by, 6, 2, "/\\", colors.gray, colors.white)
-    desenharBotao(painelX + 2, by+2, 6, 2, "<", colors.gray, colors.white)
-    desenharBotao(painelX + 16, by+2, 6, 2, ">", colors.gray, colors.white)
-    desenharBotao(painelX + 9, by+4, 6, 2, "\\/", colors.gray, colors.white)
+    -- D-Pad Ajustado (Mais alto para nao cortar)
+    desenharBotao(painelX + 9, 11, 6, 2, "/\\", colors.gray, colors.white)
+    desenharBotao(painelX + 2, 13, 6, 2, "<", colors.gray, colors.white)
+    desenharBotao(painelX + 16, 13, 6, 2, ">", colors.gray, colors.white)
+    desenharBotao(painelX + 9, 15, 6, 2, "\\/", colors.gray, colors.white)
     
-    desenharBotao(painelX + 2, alt - 1, 20, 2, "CONFIG", colors.blue, colors.white)
+    -- Botao de Configuração
+    desenharBotao(painelX + 2, 18, 20, 1, "CONFIGURACOES", colors.blue, colors.white)
 end
 
 local function desenharBatalha()
@@ -280,22 +265,22 @@ local function desenharBatalha()
         for i, linha in ipairs(inimigoAtual.arte) do centralizar(1, larg, 5 + i, linha, inimigoAtual.cor, colors.black) end
     end
 
-    mon.setCursorPos(4, alt - 5); mon.setTextColor(colors.cyan); mon.setBackgroundColor(colors.black); mon.write(jogador.monstro .. " ("..jogador.tipo..")")
-    mon.setCursorPos(4, alt - 4); mon.setTextColor(colors.white); mon.write(string.format("HP: %d / %d", jogador.hp, jogador.maxHp))
+    mon.setCursorPos(4, 12); mon.setTextColor(colors.cyan); mon.setBackgroundColor(colors.black); mon.write(jogador.monstro .. " ("..jogador.tipo..")")
+    mon.setCursorPos(4, 13); mon.setTextColor(colors.white); mon.write(string.format("HP: %d / %d", jogador.hp, jogador.maxHp))
     
     mon.setBackgroundColor(colors.gray)
-    for i=0, 1 do mon.setCursorPos(24, alt-5+i); mon.write(string.rep(" ", larg-25)) end
-    mon.setCursorPos(26, alt-4); mon.setTextColor(colors.white); mon.write(mensagemLog)
+    for i=0, 1 do mon.setCursorPos(24, 12+i); mon.write(string.rep(" ", larg-25)) end
+    mon.setCursorPos(26, 13); mon.setTextColor(colors.white); mon.write(mensagemLog)
 
     mon.setBackgroundColor(colors.black)
     if ESTADO == "BATALHA" then
-        desenharBotao(4, alt - 2, 14, 2, "ATACAR", colors.red, colors.white)
-        desenharBotao(20, alt - 2, 14, 2, "ITENS", colors.blue, colors.white)
-        desenharBotao(36, alt - 2, 14, 2, "FUGIR", colors.yellow, colors.black)
+        desenharBotao(4, 16, 14, 2, "ATACAR", colors.red, colors.white)
+        desenharBotao(20, 16, 14, 2, "ITENS", colors.blue, colors.white)
+        desenharBotao(36, 16, 14, 2, "FUGIR", colors.yellow, colors.black)
     elseif ESTADO == "SUBMENU_ITEM" then
-        desenharBotao(4, alt - 2, 16, 2, "POCAO ("..jogador.pocoes..")", colors.lime, colors.black)
-        desenharBotao(22, alt - 2, 16, 2, "ESFERA ("..jogador.esferas..")", colors.white, colors.black)
-        desenharBotao(40, alt - 2, 10, 2, "VOLTAR", colors.gray, colors.white)
+        desenharBotao(4, 16, 16, 2, "POCAO ("..jogador.pocoes..")", colors.lime, colors.black)
+        desenharBotao(22, 16, 16, 2, "ESFERA ("..jogador.esferas..")", colors.white, colors.black)
+        desenharBotao(40, 16, 10, 2, "VOLTAR", colors.gray, colors.white)
     end
 end
 
@@ -310,12 +295,8 @@ local function atualizarTela()
     end
 end
 
--- =======================================================
--- LOGICA DE MAPA E COMBATE
--- =======================================================
 local function moverJogador(dx, dy)
-    local nx = jogador.x + dx
-    local ny = jogador.y + dy
+    local nx = jogador.x + dx; local ny = jogador.y + dy
     local tile = getTile(nx, ny)
     
     if tile.type == "agua" or tile.type == "montanha" then
@@ -349,7 +330,6 @@ local function moverJogador(dx, dy)
     else
         mensagemLog = "Explorando..."
     end
-    
     salvarJogo(); atualizarTela()
 end
 
@@ -404,12 +384,8 @@ local function vitoria()
     ESTADO = "MAPA"; salvarJogo(); atualizarTela()
 end
 
--- =======================================================
--- INPUTS E LOOP PRINCIPAL
--- =======================================================
 local function loopJogo()
     atualizarTela()
-    
     while rodando do
         local ev, _, x, y = os.pullEvent("monitor_touch")
         local larg, alt = mon.getSize()
@@ -450,16 +426,15 @@ local function loopJogo()
             end
             
         elseif ESTADO == "MAPA" then
-            local by = alt - 8
-            if y >= by and y <= by+1 and x >= painelX + 9 and x <= painelX + 14 then moverJogador(0, -1)
-            elseif y >= by+4 and y <= by+5 and x >= painelX + 9 and x <= painelX + 14 then moverJogador(0, 1)
-            elseif y >= by+2 and y <= by+3 and x >= painelX + 2 and x <= painelX + 7 then moverJogador(-1, 0)
-            elseif y >= by+2 and y <= by+3 and x >= painelX + 16 and x <= painelX + 21 then moverJogador(1, 0)
-            elseif y >= alt-1 and y <= alt and x >= painelX + 2 and x <= painelX + 21 then ESTADO = "CONFIG"; atualizarTela()
+            if y >= 11 and y <= 12 and x >= painelX + 9 and x <= painelX + 14 then moverJogador(0, -1)
+            elseif y >= 15 and y <= 16 and x >= painelX + 9 and x <= painelX + 14 then moverJogador(0, 1)
+            elseif y >= 13 and y <= 14 and x >= painelX + 2 and x <= painelX + 7 then moverJogador(-1, 0)
+            elseif y >= 13 and y <= 14 and x >= painelX + 16 and x <= painelX + 21 then moverJogador(1, 0)
+            elseif y >= 18 and y <= 18 and x >= painelX + 2 and x <= painelX + 21 then ESTADO = "CONFIG"; atualizarTela()
             end
             
         elseif ESTADO == "BATALHA" or ESTADO == "SUBMENU_ITEM" then
-            if y >= alt - 2 and y <= alt - 1 then
+            if y >= 16 and y <= 17 then
                 if ESTADO == "BATALHA" then
                     if x >= 4 and x <= 17 then
                         tocar("snare", 15); local dano = math.random(10 + (jogador.nivel*3), 15 + (jogador.nivel*5))
