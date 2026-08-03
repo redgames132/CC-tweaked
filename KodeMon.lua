@@ -1,5 +1,5 @@
 -- =======================================================
--- AETHERIA 6.2 - OVERHAUL VISUAL DA LOJA E DA UI
+-- AETHERIA 7.0 - ROTAS SEGURAS E ESTRUTURAS MULTIBLOCO
 -- =======================================================
 local mon = peripheral.find("monitor")
 local listaSpeakers = {peripheral.find("speaker")}
@@ -9,19 +9,20 @@ local speakerBGM = listaSpeakers[2] or listaSpeakers[1]
 
 if not mon then print("[ERRO] Monitor nao encontrado!") return end
 
--- PALETA CUSTOMIZADA AVANÇADA (ADICIONADO ROXO PASTEL)
-mon.setPaletteColor(colors.lime, 0x8bbf54)       
-mon.setPaletteColor(colors.green, 0x5a8a32)      
-mon.setPaletteColor(colors.blue, 0x4a9cc2)       
-mon.setPaletteColor(colors.lightBlue, 0x3d404d)  
-mon.setPaletteColor(colors.gray, 0x737a80)       
-mon.setPaletteColor(colors.yellow, 0xf2c94c)     
-mon.setPaletteColor(colors.red, 0xe05656)        
-mon.setPaletteColor(colors.cyan, 0x47e8cd)       
-mon.setPaletteColor(colors.white, 0xffffff)      
-mon.setPaletteColor(colors.orange, 0xa05b22)     
-mon.setPaletteColor(colors.brown, 0xdca068)      
-mon.setPaletteColor(colors.magenta, 0xb468c4) -- Roxo suave para upgrades!
+-- PALETA CUSTOMIZADA AVANÇADA
+mon.setPaletteColor(colors.lime, 0x8bbf54)       -- Grama base (Segura)
+mon.setPaletteColor(colors.green, 0x4a7a29)      -- Grama Alta (Perigo)
+mon.setPaletteColor(colors.blue, 0x4a9cc2)       -- Agua (Bloqueia)
+mon.setPaletteColor(colors.lightBlue, 0x3d404d)  -- Mina/Asfalto
+mon.setPaletteColor(colors.gray, 0x5a6066)       -- Montanhas e Muros
+mon.setPaletteColor(colors.lightGray, 0x8b939c)  -- Chao das Arenas
+mon.setPaletteColor(colors.yellow, 0xf2c94c)     -- UI e Ouro
+mon.setPaletteColor(colors.red, 0xe05656)        -- Botoes / Telhados
+mon.setPaletteColor(colors.cyan, 0x47e8cd)       -- Cristais Magicos
+mon.setPaletteColor(colors.white, 0xffffff)      -- Paredes das Lojas
+mon.setPaletteColor(colors.orange, 0xa05b22)     -- Madeira
+mon.setPaletteColor(colors.brown, 0xd4a373)      -- Caminhos de Terra (Rotas Seguras)
+mon.setPaletteColor(colors.magenta, 0xb468c4)    -- Upgrades / Chefes
 
 local ESTADO = "MENU" 
 local modoSave = "CARREGAR"
@@ -46,12 +47,13 @@ local bestiario = {
     {nome="Lobo de Chamas", tipo="Fogo", hp=60, dano=18, xp=25, cor=colors.red, arte={" /\\/\\ ","( o.o)"," >^^< ","      "}},
     {nome="Tartaruga Rio", tipo="Agua", hp=80, dano=14, xp=30, cor=colors.blue, arte={"  ___  "," /o o\\ ","(_____)","       "}},
     {nome="Tronco Vivo", tipo="Planta", hp=90, dano=20, xp=40, cor=colors.brown, arte={" [~~~] "," [o.o] "," /[ ]\\ ","       "}},
-    {nome="Morcego Mina", tipo="Fogo", hp=50, dano=22, xp=20, cor=colors.red, arte={" ^   ^ "," \\o_o/ "," / | \\ ","       "}}
+    {nome="Dragao Fada", tipo="Planta", hp=100, dano=22, xp=50, cor=colors.magenta, arte={" /\\_/\\ ","( ^.^ )"," >\"\"< ","       "}}
 }
 
 local chefes = {
     {nome="TITAN DE GELO", tipo="Agua", hp=300, dano=30, xp=200, cor=colors.cyan, arte={" /\\/\\/\\ "," |O..O| "," |____| "," /\\/\\/\\ "}},
-    {nome="DRAGAO CELESTE", tipo="Fogo", hp=600, dano=55, xp=500, cor=colors.red, arte={" \\||||/ "," (O__O) "," /|  |\\ ","  |__|  "}}
+    {nome="DRAGAO CELESTE", tipo="Fogo", hp=600, dano=55, xp=500, cor=colors.red, arte={" \\||||/ "," (O__O) "," /|  |\\ ","  |__|  "}},
+    {nome="GOLEM ANCESTRAL", tipo="Planta", hp=1000, dano=80, xp=1000, cor=colors.green, arte={" [____] "," [O__O] "," /[||]\\ ","  /  \\  "}}
 }
 
 -- =======================================================
@@ -62,7 +64,6 @@ local function salvarJogo()
     f.write(textutils.serialize(jogador))
     f.close()
 end
-
 local function lerSaveInfo(slot)
     local arquivo = "aetheria_slot" .. slot .. ".json"
     if fs.exists(arquivo) then
@@ -73,7 +74,6 @@ local function lerSaveInfo(slot)
     end
     return string.format("SLOT %d: [VAZIO]", slot)
 end
-
 local function carregarJogo(slot)
     local arquivo = "aetheria_slot" .. slot .. ".json"
     if fs.exists(arquivo) then
@@ -87,7 +87,6 @@ local function carregarJogo(slot)
     end
     return false
 end
-
 local function deletarSave(slot)
     local arquivo = "aetheria_slot" .. slot .. ".json"
     if fs.exists(arquivo) then fs.delete(arquivo); return true end
@@ -95,20 +94,20 @@ local function deletarSave(slot)
 end
 
 -- =======================================================
--- MOTOR DE AUDIO: TRILHAS CORRIGIDAS E INSTRUMENTOS
+-- MOTOR DE AUDIO 8-BIT
 -- =======================================================
 local function tocar(instrumento, pitch)
     if speakerSFX then pcall(function() speakerSFX.playNote(instrumento, volume, pitch) end) end
 end
 
 local trilhas = {
-    { nome = "Tema Principal", inst = "harp", notas = {
+    { nome = "Rota 1 (Aventura)", inst = "harp", notas = {
         {12,0.2},{16,0.2},{19,0.2},{16,0.2},{12,0.2},{16,0.2},{19,0.4},
         {14,0.2},{17,0.2},{21,0.2},{17,0.2},{14,0.2},{17,0.2},{21,0.4},
         {10,0.2},{14,0.2},{17,0.2},{14,0.2},{10,0.2},{14,0.2},{17,0.4},
         {12,0.2},{16,0.2},{19,0.2},{24,0.2},{19,0.2},{16,0.2},{12,0.5}
     }},
-    { nome = "Flowey (Your Best Friend)", inst = "bit", notas = {
+    { nome = "Flowey (Gameboy)", inst = "bit", notas = {
         {6, 0.2}, {6, 0.2}, {13, 0.6}, {13, 0.2}, {11, 0.2}, {10, 0.4}, {8, 0.4},
         {6, 0.2}, {6, 0.2}, {15, 0.6}, {13, 0.2}, {11, 0.2}, {10, 0.4}, {8, 0.4},
         {6, 0.2}, {6, 0.2}, {13, 0.6}, {13, 0.2}, {11, 0.2}, {10, 0.4}, {8, 0.4},
@@ -131,33 +130,69 @@ end
 tocar("chime", 12)
 
 -- =======================================================
--- GERADOR DE MAPA
+-- GERADOR DE MUNDO (ROTAS E ESTRUTURAS MULTIBLOCO)
 -- =======================================================
 local function getTile(wx, wy)
-    if wx >= -1 and wx <= 1 and wy >= -1 and wy <= 1 then return {bg=colors.yellow, fg=colors.black, char="*", type="spawn"} end
+    if wx == 0 and wy == 0 then return {bg=colors.yellow, fg=colors.black, char="*", passavel=true, type="spawn"} end
     
     local s = jogador.seed
-    local ruido = math.sin((wx+s) * 0.3) + math.cos((wy+s) * 0.3) + math.sin((wx+wy+s) * 0.1)
-    local ruido2 = math.cos((wx+s) * 0.1) + math.sin((wy+s) * 0.2)
     
-    if ruido < -1.0 then return {bg=colors.blue, fg=colors.cyan, char="~", type="agua"} end
-    if ruido > 1.2 then return {bg=colors.gray, fg=colors.lightGray, char="^", type="montanha"} end
+    -- SISTEMA DE CHUNKS PARA ESTRUTURAS GIGANTES (Blocos de 12x12)
+    local cx = math.floor(wx / 12); local cy = math.floor(wy / 12)
+    local lx = wx % 12; local ly = wy % 12
+    local chunkHash = math.abs((cx * 7331) + (cy * 1999) + s) % 100
     
-    local posKey = wx..","..wy
-    local hash = math.abs(((wx+s) * 1337) + ((wy+s) * 99991)) % 1000
-    
-    if not jogador.coletados[posKey] then
-        if hash < 5 then return {bg=colors.magenta, fg=colors.white, char="H", type="chefe"} end
-        if hash < 15 then return {bg=colors.orange, fg=colors.white, char="L", type="loja"} end 
-        if hash < 35 then return {bg=colors.cyan, fg=colors.white, char="+", type="cura"} end
-        if hash > 100 and hash < 115 then return {bg=colors.yellow, fg=colors.black, char="$", type="ouro"} end
-        if hash > 115 and hash < 125 then return {bg=colors.white, fg=colors.red, char="O", type="esfera"} end
+    -- 1. LOJAS (10% de chance por Chunk)
+    if chunkHash <= 10 then
+        local dx, dy = lx - 6, ly - 6
+        if dy == -1 and math.abs(dx) <= 1 then return {bg=colors.red, fg=colors.white, char="=", passavel=false, type="parede"} end -- Telhado
+        if dy == 0 and math.abs(dx) <= 1 then
+            if dx == 0 then return {bg=colors.orange, fg=colors.black, char="L", passavel=true, type="loja"} end -- Porta
+            return {bg=colors.white, fg=colors.gray, char="|", passavel=false, type="parede"} -- Paredes Brancas
+        end
     end
     
-    if ruido2 > 0.8 then return {bg=colors.lightBlue, fg=colors.gray, char="m", type="mina"} end
-    if ruido > 0.5 then return {bg=colors.green, fg=colors.lime, char="\"", type="grama_alta"} end
+    -- 2. ARENAS DE CHEFES (10% de chance por Chunk)
+    if chunkHash > 10 and chunkHash <= 20 then
+        local dx, dy = lx - 6, ly - 6
+        local posKey = wx..","..wy
+        if math.abs(dx) <= 2 and math.abs(dy) <= 2 then
+            if math.abs(dx) == 2 or math.abs(dy) == 2 then
+                -- Muros e Entrada
+                if dy == 2 and dx == 0 then return {bg=colors.brown, fg=colors.orange, char=".", passavel=true, type="caminho"} end
+                return {bg=colors.gray, fg=colors.black, char="#", passavel=false, type="parede"}
+            end
+            if dx == 0 and dy == 0 and not jogador.coletados[posKey] then
+                return {bg=colors.magenta, fg=colors.white, char="H", passavel=true, type="chefe"}
+            end
+            -- Chao da arena
+            return {bg=colors.lightGray, fg=colors.white, char=".", passavel=true, type="caminho"}
+        end
+    end
+
+    -- COLETÁVEIS (Fora de estruturas)
+    local posKey = wx..","..wy
+    local itemHash = math.abs(((wx+s) * 1337) + ((wy+s) * 99991)) % 1000
+    if not jogador.coletados[posKey] then
+        if itemHash < 15 then return {bg=colors.cyan, fg=colors.white, char="+", passavel=true, type="cura"} end
+        if itemHash > 100 and itemHash < 110 then return {bg=colors.yellow, fg=colors.black, char="$", passavel=true, type="ouro"} end
+        if itemHash > 110 and itemHash < 115 then return {bg=colors.white, fg=colors.red, char="O", passavel=true, type="esfera"} end
+    end
     
-    return {bg=colors.lime, fg=colors.green, char=".", type="grama"}
+    -- TERRENO PROCEDURAL ORGÂNICO (Rotas e Biomas)
+    local ruidoCaminho = math.sin((wx+s)*0.2) + math.cos((wy+s)*0.2)
+    local ruidoBioma = math.cos((wx+s)*0.1) + math.sin((wy+s)*0.15)
+    
+    -- Rotas Seguras (Caminhos de Terra interligados)
+    if math.abs(ruidoCaminho) < 0.3 then return {bg=colors.brown, fg=colors.orange, char=".", passavel=true, type="caminho"} end
+    
+    -- Obstaculos Naturais
+    if ruidoBioma > 0.8 then return {bg=colors.gray, fg=colors.lightGray, char="^", passavel=false, type="montanha"} end
+    if ruidoCaminho < -1.3 then return {bg=colors.blue, fg=colors.cyan, char="~", passavel=false, type="agua"} end
+    
+    -- Grama Alta (Perigosa) e Grama Normal (Segura)
+    if ruidoCaminho > 0.6 then return {bg=colors.green, fg=colors.lime, char="\"", passavel=true, type="grama_alta"} end
+    return {bg=colors.lime, fg=colors.green, char=",", passavel=true, type="grama"}
 end
 
 local function centralizar(x_start, largura, y, texto, corTexto, corFundo)
@@ -176,27 +211,19 @@ local function desenharBotao(x, y, larg, alt, texto, corFundo, corTexto)
 end
 
 -- =======================================================
--- RENDERIZADOR DE TELAS (NOVA LOJA)
+-- RENDERIZADOR DE TELAS
 -- =======================================================
 local function desenharLoja()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
-    
-    -- Lado Esquerdo: O Mercador
     mon.setBackgroundColor(colors.lightBlue)
     for i=1, alt do mon.setCursorPos(1, i); mon.write(string.rep(" ", 24)) end
-    
     local vy = 5
-    -- Balão de Fala Animado
-    local falas = {"Deseja algo, heroi?", "Temos otimos precos!"}
+    local falas = {"Ola viajante!", "Esferas em promo!"}
     centralizar(1, 24, vy-2, "( " .. falas[animFrame] .. " )", colors.white, colors.lightBlue)
     centralizar(1, 24, vy-1, "v", colors.white, colors.lightBlue)
-
-    -- Chapéu
     centralizar(1, 24, vy,   "  .----.  ", colors.brown, colors.lightBlue)
     centralizar(1, 24, vy+1, " /      \\ ", colors.brown, colors.lightBlue)
-
-    -- Rosto e Corpo (Animado)
     if animFrame == 1 then
         centralizar(1, 24, vy+2, " |( o_o)| ", colors.brown, colors.lightBlue)
         centralizar(1, 24, vy+3, " |__\\__/__| ", colors.green, colors.lightBlue)
@@ -206,41 +233,24 @@ local function desenharLoja()
         centralizar(1, 24, vy+3, " |__\\__/__| ", colors.green, colors.lightBlue)
         centralizar(1, 24, vy+4, " \\/|    |\\/ ", colors.green, colors.lightBlue)
     end
-
-    -- Balcão de Madeira
-    for i=0, 2 do 
-        mon.setCursorPos(3, vy+5+i)
-        mon.setBackgroundColor(colors.orange)
-        mon.write(string.rep(" ", 20)) 
-    end
+    for i=0, 2 do mon.setCursorPos(3, vy+5+i); mon.setBackgroundColor(colors.orange); mon.write(string.rep(" ", 20)) end
     centralizar(1, 24, vy+5, "====================", colors.brown, colors.orange)
     centralizar(1, 24, vy+6, " M E R C A D O R  ", colors.yellow, colors.orange)
     centralizar(1, 24, vy+7, "====================", colors.brown, colors.orange)
     
-    -- Lado Direito: Produtos e Menu
     mon.setBackgroundColor(colors.black)
     centralizar(26, larg-25, 2, "B A Z A R  D A  V I L A", colors.yellow, colors.black)
     centralizar(26, larg-25, 4, "Ouro Atual: " .. jogador.ouro .. " G", colors.cyan, colors.black)
-
-    -- Novos Botoes com Ícones e Cores
     desenharBotao(28, 7,  26, 2, "[+] POCAO (50HP) : 20G", colors.gray, colors.lime)
     desenharBotao(28, 10, 26, 2, "[O] ESFERA AETHER: 30G", colors.gray, colors.white)
     desenharBotao(28, 13, 26, 2, "[^] SUBIR LEVEL : 100G", colors.magenta, colors.white)
     desenharBotao(28, 16, 26, 2, "[X] SAIR DA LOJA", colors.red, colors.white)
 end
 
-local function desenharMenu()
-    mon.setBackgroundColor(colors.black); mon.clear()
-    local larg, alt = mon.getSize()
-    centralizar(1, larg, 4, "A E T H E R I A", colors.yellow, colors.black)
-    desenharBotao(math.floor(larg/2)-10, 8, 20, 2, "JOGAR", colors.lime, colors.black)
-end
-
 local function desenharSaves()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
     centralizar(1, larg, 2, "GERENCIADOR DE SAVES", colors.cyan, colors.black)
-    
     local corModo = (modoSave == "CARREGAR") and colors.blue or colors.red
     desenharBotao(math.floor(larg/2)-15, 4, 30, 2, "MODO: [ " .. modoSave .. " ]", corModo, colors.white)
     desenharBotao(math.floor(larg/2)-15, 7, 30, 2, lerSaveInfo(1), colors.gray, colors.white)
@@ -270,6 +280,13 @@ local function desenharConfig()
     desenharBotao(math.floor(larg/2)-15, 14, 30, 2, "VOLTAR AO MAPA", colors.blue, colors.white)
 end
 
+local function desenharMenu()
+    mon.setBackgroundColor(colors.black); mon.clear()
+    local larg, alt = mon.getSize()
+    centralizar(1, larg, 4, "A E T H E R I A", colors.yellow, colors.black)
+    desenharBotao(math.floor(larg/2)-10, 8, 20, 2, "JOGAR", colors.lime, colors.black)
+end
+
 local function desenharMapa()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
@@ -283,11 +300,8 @@ local function desenharMapa()
             local tile = getTile(worldX, worldY)
             
             mon.setCursorPos(screenX, screenY); mon.setBackgroundColor(tile.bg)
-            if screenX == cx and screenY == cy then
-                mon.setTextColor(colors.white); mon.write("@")
-            else
-                mon.setTextColor(tile.fg); mon.write(tile.char)
-            end
+            if screenX == cx and screenY == cy then mon.setTextColor(colors.white); mon.write("@")
+            else mon.setTextColor(tile.fg); mon.write(tile.char) end
         end
     end
     
@@ -319,10 +333,10 @@ end
 local function desenharBatalha()
     mon.setBackgroundColor(colors.black); mon.clear()
     local larg, alt = mon.getSize()
-    
     local nomeInim = inimigoAtual and inimigoAtual.nome or "???"
-    mon.setCursorPos(1, 1); mon.setBackgroundColor(colors.yellow); mon.write(string.rep(" ", larg))
-    centralizar(1, larg, 1, "BATALHA: " .. jogador.monstro .. " VS " .. nomeInim, colors.black, colors.yellow)
+    
+    mon.setCursorPos(1, 1); mon.setBackgroundColor(colors.magenta); mon.write(string.rep(" ", larg))
+    centralizar(1, larg, 1, "BATALHA: " .. jogador.monstro .. " VS " .. nomeInim, colors.white, colors.magenta)
 
     if inimigoAtual then
         centralizar(1, larg, 3, inimigoAtual.nome .. " (" .. inimigoAtual.tipo .. ")", inimigoAtual.cor, colors.black)
@@ -362,7 +376,7 @@ local function atualizarTela()
 end
 
 -- =======================================================
--- LOGICA DE JOGO
+-- LOGICA DE MAPA E COMBATE (COLISOES INTELIGENTES)
 -- =======================================================
 local function turnoInimigo()
     if inimigoAtual and inimigoAtual.hp > 0 then
@@ -387,7 +401,6 @@ end
 local function tentarCaptura()
     if jogador.esferas > 0 then
         jogador.esferas = jogador.esferas - 1; tocar("bell", 10)
-        
         if inimigoAtual.isBoss then
             mensagemLog = "Impossivel capturar CHEFES!"; atualizarTela(); os.sleep(1); turnoInimigo()
         else
@@ -396,8 +409,7 @@ local function tentarCaptura()
                 jogador.monstro = inimigoAtual.nome; jogador.tipo = inimigoAtual.tipo
                 mensagemLog = "CAPTUROU " .. string.upper(inimigoAtual.nome) .. "!"
                 tocar("chime", 20); atualizarTela(); os.sleep(2)
-                inimigoAtual = nil
-                ESTADO = "MAPA"; salvarJogo()
+                ESTADO = "MAPA"; inimigoAtual = nil; salvarJogo(); atualizarTela()
             else
                 mensagemLog = "O monstro escapou!"; atualizarTela(); os.sleep(1); turnoInimigo()
             end
@@ -414,15 +426,19 @@ local function vitoria()
         jogador.maxHp = jogador.maxHp + 15; jogador.hp = jogador.maxHp
         mensagemLog = "MONSTRO SUBIU DE NIVEL!"; tocar("chime", 24); atualizarTela(); os.sleep(2)
     end
-    inimigoAtual = nil 
-    ESTADO = "MAPA"; salvarJogo(); atualizarTela()
+    
+    -- Se for chefe, marca que foi derrotado para ele sumir
+    if inimigoAtual.isBoss then jogador.coletados[jogador.x..","..jogador.y] = true end
+    
+    ESTADO = "MAPA"; inimigoAtual = nil; salvarJogo(); atualizarTela()
 end
 
 local function moverJogador(dx, dy)
     local nx = jogador.x + dx; local ny = jogador.y + dy
     local tile = getTile(nx, ny)
     
-    if tile.type == "agua" or tile.type == "montanha" then
+    -- SISTEMA DE COLISÃO
+    if not tile.passavel then
         mensagemLog = "Caminho bloqueado!"; tocar("bass", 5); atualizarTela(); return
     end
     
@@ -434,39 +450,40 @@ local function moverJogador(dx, dy)
     elseif tile.type == "ouro" then
         jogador.ouro = jogador.ouro + math.random(10, 25); jogador.coletados[posKey] = true; mensagemLog = "Encontrou Ouro!"; tocar("chime", 20)
     elseif tile.type == "esfera" then
-        jogador.esferas = jogador.esferas + 1; jogador.coletados[posKey] = true; mensagemLog = "Encontrou Esfera!"; tocar("bell", 15)
+        jogador.esferas = jogador.esferas + 1; jogador.coletados[posKey] = true; mensagemLog = "Encontrou Esfera Aether!"; tocar("bell", 15)
     elseif tile.type == "loja" then
         mensagemLog = "Entrando na loja..."; tocar("bell", 20); ESTADO = "LOJA"
     elseif tile.type == "chefe" then
         local boss = chefes[math.random(1, #chefes)]; local mult = 1.0 + (jogador.nivel * 0.3)
         inimigoAtual = {nome=boss.nome, tipo=boss.tipo, maxHp=math.floor(boss.hp*mult), hp=math.floor(boss.hp*mult), dano=math.floor(boss.dano*mult), cor=boss.cor, arte=boss.arte, isBoss=true}
         mensagemLog = "O CHEFE APARECEU!"; tocar("bass", 2); ESTADO = "BATALHA"
-    elseif tile.type == "grama_alta" or tile.type == "mina" then
-        local chance = (tile.type == "mina") and 40 or 15
-        if math.random(1, 100) <= chance then
+    elseif tile.type == "grama_alta" then
+        -- Encontros apenas na Grama Alta! (Caminho de Terra = Seguro)
+        if math.random(1, 100) <= 20 then
             local monstro = bestiario[math.random(1, math.min(jogador.nivel + 1, #bestiario))]
             local mult = 1.0 + ((jogador.nivel - 1) * 0.15)
             inimigoAtual = {nome=monstro.nome, tipo=monstro.tipo, maxHp=math.floor(monstro.hp*mult), hp=math.floor(monstro.hp*mult), dano=math.floor(monstro.dano*mult), xp=math.floor(monstro.xp*mult), cor=monstro.cor, arte=monstro.arte, isBoss=false}
             mensagemLog = "Selvagem surgiu!"; tocar("cow_bell", 10); ESTADO = "BATALHA"
-        else mensagemLog = (tile.type == "mina") and "Mina escura..." or "Grama alta..." end
-    else mensagemLog = "Explorando..." end
+        else mensagemLog = "A grama se mexe..." end
+    else
+        mensagemLog = "Explorando a rota..." 
+    end
     
     salvarJogo(); atualizarTela()
 end
 
 -- =======================================================
--- LOOP PRINCIPAL (COM ANIMAÇÕES)
+-- EVENT LOOP
 -- =======================================================
 local function loopJogo()
     atualizarTela()
-    local animTimer = os.startTimer(0.5) 
+    local animTimer = os.startTimer(0.5)
     
     while rodando do
         local ev, p1, x, y = os.pullEvent()
         
         if ev == "timer" and p1 == animTimer then
-            animFrame = (animFrame % 2) + 1
-            animTimer = os.startTimer(0.5)
+            animFrame = (animFrame % 2) + 1; animTimer = os.startTimer(0.5)
             if ESTADO == "LOJA" then atualizarTela() end
         end
         
@@ -506,9 +523,7 @@ local function loopJogo()
                 elseif y >= 13 and y <= 14 and x >= 28 then
                     if jogador.ouro >= 100 then jogador.ouro = jogador.ouro - 100; jogador.nivel = jogador.nivel + 1; jogador.maxHp = jogador.maxHp + 15; jogador.hp = jogador.maxHp; tocar("chime", 24); atualizarTela()
                     else tocar("bass", 5) end
-                elseif y >= 16 and y <= 17 and x >= 28 then
-                    tocar("hat", 12); ESTADO = "MAPA"; atualizarTela()
-                end
+                elseif y >= 16 and y <= 17 and x >= 28 then tocar("hat", 12); ESTADO = "MAPA"; atualizarTela() end
                 
             elseif ESTADO == "CONFIG" then
                 if y >= 5 and y <= 6 then config.musica = not config.musica; tocar("hat", 12); atualizarTela()
