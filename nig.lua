@@ -1,17 +1,21 @@
--- Encontra os periféricos conectados automaticamente (não importa o lado)
-local monitor = peripheral.find("monitor")
-local detector = peripheral.find("playerDetector")
+-- Substitua "left" e "right" pelos lados corretos onde seus blocos estão!
+-- Lados válidos: "left", "right", "top", "bottom", "front", "back"
+
+local monitor = peripheral.wrap("left")
+local detector = peripheral.wrap("right")
 
 -- Verifica se os periféricos estão realmente conectados
 if not monitor then
-    print("Erro: Monitor não encontrado! Verifique se ele está conectado.")
+    print("Erro: Monitor nao encontrado no lado especificado.")
     return
 end
 
 if not detector then
-    print("Erro: Player Detector não encontrado! Verifique se ele está ao lado do PC.")
+    print("Erro: Player Detector nao encontrado no lado especificado.")
     return
 end
+
+-- (O restante do código continua exatamente igual ao anterior a partir daqui)
 
 -- Configurações visuais do Monitor
 monitor.setTextScale(1) -- Altere para 0.5 se quiser letras menores
